@@ -71,9 +71,10 @@ stored.
      URL once deployed, e.g. `https://radar.vercel.app`).
    - Redirect URLs: add `http://localhost:3000/auth/callback` and, once
      deployed, `https://<your-vercel-domain>/auth/callback`.
-5. **Run the database schema**: *SQL Editor -> New query*, paste in the
-   contents of [`supabase/migrations/0001_init.sql`](./supabase/migrations/0001_init.sql),
-   and run it. This creates `users`, `google_tokens`, `clients`,
+5. **Run the database schema**: *SQL Editor -> New query*, run
+   [`supabase/migrations/0001_init.sql`](./supabase/migrations/0001_init.sql)
+   then [`supabase/migrations/0002_clients_unique_domain.sql`](./supabase/migrations/0002_clients_unique_domain.sql),
+   in that order. This creates `users`, `google_tokens`, `clients`,
    `threads`, `ai_extractions`, `scores_daily`, with Row Level Security
    so each user can only see their own data.
 
@@ -90,12 +91,9 @@ Then fill in:
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase Project Settings -> API -> Project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase Project Settings -> API -> anon public key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase Project Settings -> API -> service_role key (not used yet) |
+| `GOOGLE_OAUTH_CLIENT_ID` / `GOOGLE_OAUTH_CLIENT_SECRET` | Same values pasted into the Supabase Dashboard (step 2.3). Also needed here so the Gmail sync route can refresh its own access token server-side. |
 | `ANTHROPIC_API_KEY` | Not used yet — needed for the AI extraction step |
 | `RESEND_API_KEY` | Not used yet — needed for the weekly digest email step |
-
-Note: the Google OAuth Client ID/Secret do **not** go in this file — they
-live only in the Supabase Dashboard (step 2.3 above), since Supabase is
-the one exchanging them with Google.
 
 ## 4. Run it
 
@@ -109,6 +107,12 @@ Google account you added as a test user, and approve the Gmail
 read-only permission. You should land on `/dashboard` showing your email
 and a green "Gmail connected (read-only)" indicator.
 
+Once connected, click **Sync Gmail** on the dashboard to pull threads from
+the last 90 days and group them into clients by counterparty email domain
+(internal-only threads are skipped). Threads are capped at 300 per sync for
+now — fine for testing, but a real background job will be needed before
+this scales to large mailboxes.
+
 If you land on `/auth/auth-code-error` instead, check:
 - The Supabase callback URL is added to the Google OAuth client's
   authorized redirect URIs.
@@ -119,7 +123,6 @@ If you land on `/auth/auth-code-error` instead, check:
 
 ## What's next (not built yet)
 
-- Fetching Gmail threads from the last 90 days and grouping into clients
 - The deterministic signal engine (reply latency, contact recency, etc.)
 - Claude-based AI extraction on top threads per client
 - The scoring engine (health score + dollar-at-risk)
