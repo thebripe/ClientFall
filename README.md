@@ -76,7 +76,8 @@ cron.
    order:
    [`0001_init.sql`](./supabase/migrations/0001_init.sql) ->
    [`0002_clients_unique_domain.sql`](./supabase/migrations/0002_clients_unique_domain.sql) ->
-   [`0003_thread_message_summary.sql`](./supabase/migrations/0003_thread_message_summary.sql).
+   [`0003_thread_message_summary.sql`](./supabase/migrations/0003_thread_message_summary.sql) ->
+   [`0004_users_last_synced_at.sql`](./supabase/migrations/0004_users_last_synced_at.sql).
    This creates `users`, `google_tokens`, `clients`, `threads`,
    `ai_extractions`, `scores_daily`, with Row Level Security so each user
    can only see their own data.
@@ -130,16 +131,37 @@ catches senders a domain blocklist never would (airlines, colleges,
 streaming services) without maintaining one. See `isBulkMessage` in
 [`src/lib/google/gmail.ts`](./src/lib/google/gmail.ts).
 
-The dashboard leads with a headline (clients needing attention today +
-total $ at risk, both animated with a count-up), then the "Who needs
-attention" list grouped into urgency tiers with premium-feeling cards
-(risk badge, $ opportunity, last contact, recommended action — healthy
-relationships collapse to a one-line count so the list stays focused).
-Click through any card for a full client detail page: relationship
-health, communication trend (are you replying faster or slower than
-before), deal momentum (message volume trending up/down), potential
-risks, a suggested next action with a confidence level and its
-reasoning, and a visual timeline of the relationship.
+The dashboard opens on a morning-briefing hero, not a stats grid: a
+greeting, "reviewed N clients across M conversations since your last
+sync (X ago)", a single spotlight on whichever client is most urgent
+right now with a plain-English reason and a short recommended action
+("Reply today", "Follow up", "Check in"), then two smaller counts —
+high priority and recommended actions, both reusing the same 60/30
+score thresholds as the rest of the app — plus total $ at risk if any
+of those clients have a contract value set. Below that, the "Who needs
+attention" list groups the same clients into urgency tiers with
+premium-feeling cards (risk badge, $ opportunity, last contact,
+recommended action — healthy relationships collapse to a one-line
+count so the list stays focused). Click through any card for a full
+client detail page: relationship health, communication trend (are you
+replying faster or slower than before), deal momentum (message volume
+trending up/down), potential risks, a suggested next action with a
+confidence level and its reasoning, and a visual timeline of the
+relationship.
+
+The dashboard shows each client's *most recent* score regardless of
+which day it was computed — not just today's — so it never goes blank
+just because you haven't synced yet today; it accurately reflects
+"since your last sync" instead.
+
+"Reviewed N clients across M conversations" counts clients scored on
+the same date as the most recent sync, and sums the thread count on
+file for exactly those clients — a real, honest number, though not a
+byte-for-byte log of that specific sync run (we don't track
+per-sync-run thread history, just per-client latest state). `last_synced_at`
+is set at the end of every successful manual sync — still no scheduled/
+background sync exists, so the copy always says "since your last sync",
+never "overnight" or implies a cron job.
 
 None of this is AI-generated — it's all deterministic analysis of real
 message timing/direction/frequency (see

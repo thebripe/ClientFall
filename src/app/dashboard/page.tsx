@@ -14,29 +14,49 @@ export default async function DashboardPage() {
     redirect("/");
   }
 
-  const { data: tokenRow } = await supabase
-    .from("google_tokens")
-    .select("refresh_token")
-    .eq("user_id", user.id)
-    .maybeSingle();
+  const [{ data: tokenRow }, { data: profileRow }, { data: scoreRows }, { count: clientCount }] =
+    await Promise.all([
+      supabase.from("google_tokens").select("refresh_token").eq("user_id", user.id).maybeSingle(),
+      supabase.from("users").select("last_synced_at").eq("id", user.id).maybeSingle(),
+      supabase
+        .from("scores_daily")
+        .select(
+          "health_score, dollar_at_risk, top_reasons_json, date, clients(id, name, email_domain, contract_value, threads(last_message_at))"
+        )
+        .order("date", { ascending: false }),
+      supabase.from("clients").select("id", { count: "exact", head: true }),
+    ]);
 
   const gmailConnected = Boolean(tokenRow?.refresh_token);
 
-  const today = new Date().toISOString().slice(0, 10);
-  const { data: scoreRows } = await supabase
-    .from("scores_daily")
-    .select(
-      "health_score, dollar_at_risk, top_reasons_json, clients(id, name, email_domain, contract_value, threads(last_message_at))"
-    )
-    .eq("date", today)
-    .order("health_score", { ascending: false });
+  // Rows come back newest-date-first; keep only the most recent score per
+  // client so the dashboard shows real (if slightly stale) data instead of
+  // going blank on any day you haven't synced.
+  const allRows = (scoreRows as unknown as ScoreRow[] | null)?.filter((r) => r.clients !== null) ?? [];
+  const seen = new Set<string>();
+  const ranked: ScoreRow[] = [];
+  for (const row of allRows) {
+    const id = row.clients!.id;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    ranked.push(row);
+  }
+  ranked.sort((a, b) => b.health_score - a.health_score);
 
-  const ranked =
-    (scoreRows as unknown as ScoreRow[] | null)?.filter((row) => row.clients !== null) ?? [];
+  // Clients actually touched by the most recent sync run specifically
+  // (same max date), for the "reviewed since your last sync" count.
+  const mostRecentDate = allRows[0]?.date ?? null;
+  const reviewedRows = mostRecentDate ? allRows.filter((r) => r.date === mostRecentDate) : [];
+  const reviewedClientCount = reviewedRows.length;
+  const reviewedThreadCount = reviewedRows.reduce(
+    (sum, r) => sum + r.clients!.threads.length,
+    0
+  );
 
-  const { count: clientCount } = await supabase
-    .from("clients")
-    .select("id", { count: "exact", head: true });
+  const firstName = (user.user_metadata?.full_name || user.user_metadata?.name || "")
+    .toString()
+    .trim()
+    .split(" ")[0] || null;
 
   return (
     <main className="min-h-screen bg-[#0a0e17] px-6 py-10 text-slate-100">
@@ -48,9 +68,13 @@ export default async function DashboardPage() {
 
         <DashboardContent
           userEmail={user.email!}
+          firstName={firstName}
           gmailConnected={gmailConnected}
           clientCount={clientCount ?? 0}
           ranked={ranked}
+          lastSyncedAt={profileRow?.last_synced_at ?? null}
+          reviewedClientCount={reviewedClientCount}
+          reviewedThreadCount={reviewedThreadCount}
         />
 
         <div className="rounded-lg border border-dashed border-slate-800 p-6 text-sm text-slate-500">

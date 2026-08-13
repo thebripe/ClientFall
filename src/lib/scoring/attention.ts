@@ -25,6 +25,7 @@ export type AttentionResult = {
   score: number; // 0-100, higher = more urgent
   reasons: string[];
   suggestedAction: string;
+  actionLabel: string; // short, punchy form of suggestedAction (2-4 words)
 };
 
 // "warming" = replying faster than before, "cooling" = replying slower,
@@ -198,6 +199,7 @@ export function computeAttentionScore(signal: AttentionSignal): AttentionResult 
   const reasons: string[] = [];
 
   let suggestedAction = "No action needed right now.";
+  let actionLabel = "All good";
 
   if (awaitingReply) {
     // Highest-priority case: the client sent the last message and is
@@ -211,15 +213,19 @@ export function computeAttentionScore(signal: AttentionSignal): AttentionResult 
             daysSinceLastContact === 1 ? "" : "s"
           }`
     );
-    suggestedAction =
-      daysSinceLastContact >= 7
-        ? "Reply now — it's been over a week and they're still waiting on you."
-        : "Reply to close the loop — they're waiting on you.";
+    if (daysSinceLastContact >= 7) {
+      suggestedAction = "Reply now — it's been over a week and they're still waiting on you.";
+      actionLabel = "Reply today";
+    } else {
+      suggestedAction = "Reply to close the loop — they're waiting on you.";
+      actionLabel = "Reply soon";
+    }
   } else {
     score += Math.min(daysSinceLastContact, 30) * 1.5;
     if (daysSinceLastContact >= 3) {
       reasons.push("You're waiting on their reply");
       suggestedAction = "Send a short follow-up nudge.";
+      actionLabel = "Follow up";
     }
   }
 
@@ -227,6 +233,7 @@ export function computeAttentionScore(signal: AttentionSignal): AttentionResult 
     score += 20;
     reasons.push("Went quiet after an active exchange");
     suggestedAction = "Check in — this relationship went cold fast.";
+    actionLabel = "Check in";
   }
 
   if (reasons.length === 0) {
@@ -237,5 +244,6 @@ export function computeAttentionScore(signal: AttentionSignal): AttentionResult 
     score: Math.min(100, Math.round(score)),
     reasons,
     suggestedAction,
+    actionLabel,
   };
 }

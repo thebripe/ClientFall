@@ -239,7 +239,7 @@ export async function POST() {
 
     const signal = deriveAttentionSignal(agg.messages);
     const trend = deriveCommunicationTrend(agg.messages);
-    const { score, reasons, suggestedAction } = computeAttentionScore(signal);
+    const { score, reasons, suggestedAction, actionLabel } = computeAttentionScore(signal);
     const insights = buildInsights(signal, trend);
     const confidence = assessConfidence(signal, trend);
     const momentum = deriveVolumeTrend(signal);
@@ -257,6 +257,7 @@ export async function POST() {
         top_reasons_json: {
           reasons,
           suggestedAction,
+          actionLabel,
           insights,
           confidence,
           trend: trend.trend,
@@ -266,6 +267,13 @@ export async function POST() {
       { onConflict: "client_id,date" }
     );
   }
+
+  // Record when this sync ran (not a schedule — just the last manual
+  // trigger) so the morning briefing can say "since your last sync".
+  await supabase
+    .from("users")
+    .update({ last_synced_at: new Date().toISOString() })
+    .eq("id", user.id);
 
   return NextResponse.json({ clients: clientCount, threads: threadCount });
 }
