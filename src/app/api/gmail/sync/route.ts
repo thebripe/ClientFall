@@ -130,9 +130,15 @@ export async function POST() {
 
   const clientsByKey = new Map<string, ClientAggregate>();
 
+  // Temporary debug counters — remove once we've confirmed sync finds
+  // real data end to end.
+  let threadsWithMessages = 0;
+  let threadsWithCounterparty = 0;
+
   for (const thread of threads) {
     const messages = thread.messages ?? [];
     if (messages.length === 0) continue;
+    threadsWithMessages++;
 
     const counterparty = findCounterparty(
       thread,
@@ -141,6 +147,7 @@ export async function POST() {
       ownDomainIsConsumer
     );
     if (!counterparty) continue; // internal-only or noise, not a client
+    threadsWithCounterparty++;
 
     const key = groupingKeyFor(counterparty);
     if (!clientsByKey.has(key)) {
@@ -235,5 +242,17 @@ export async function POST() {
     );
   }
 
-  return NextResponse.json({ clients: clientCount, threads: threadCount });
+  return NextResponse.json({
+    clients: clientCount,
+    threads: threadCount,
+    debug: {
+      ownEmail,
+      ownDomain,
+      ownDomainIsConsumer,
+      threadIdsFound: threadIds.length,
+      threadsFetched: threads.length,
+      threadsWithMessages,
+      threadsWithCounterparty,
+    },
+  });
 }
