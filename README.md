@@ -110,13 +110,16 @@ read-only permission. You should land on `/dashboard` showing your email
 and a green "Gmail connected (read-only)" indicator.
 
 Once connected, click **Sync Gmail** on the dashboard to pull threads from
-the last 60 days, group them into clients by counterparty email domain
-(internal-only and obviously-automated senders — no-reply, notifications,
-newsletters, etc. — are skipped), and compute a "who needs attention"
-score per client from reply direction, days since last contact, and
-sudden drop-offs in activity. Threads are capped at 300 per sync for now
-— fine for testing, but a real background job will be needed before this
-scales to large mailboxes.
+the last 60 days, group them into clients by counterparty (company
+domain when the sender uses one, exact email address when they're on a
+shared consumer webmail domain like gmail.com/yahoo.com/outlook.com —
+otherwise two unrelated people on the same provider would get merged
+into one "client"), skip internal-only and obviously-automated threads
+(no-reply, notifications, newsletters, etc.), and compute a "who needs
+attention" score per client from reply direction, days since last
+contact, and sudden drop-offs in activity. Threads are capped at 300 per
+sync for now — fine for testing, but a real background job will be
+needed before this scales to large mailboxes.
 
 The dashboard's "Who needs attention" list is ranked highest-urgency
 first, each row showing a plain-English reason (e.g. "Hasn't heard back

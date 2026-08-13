@@ -3,12 +3,15 @@ import { createClient } from "@/lib/supabase/server";
 import {
   getHeader,
   getThread,
+  groupingKeyFor,
+  isConsumerEmailDomain,
   isNoiseAddress,
   listRecentThreadIds,
   mapWithConcurrency,
   parseAddress,
   refreshGoogleAccessToken,
   type GmailThread,
+  type ParsedAddress,
 } from "@/lib/google/gmail";
 import {
   computeAttentionScore,
@@ -31,28 +34,51 @@ type ThreadSummary = {
 };
 
 type ClientAggregate = {
-  domain: string;
+  groupingKey: string;
   nameCounts: Map<string, number>;
   threads: ThreadSummary[];
   messages: ClientMessageSignal[];
 };
 
-// Walks a thread's messages and returns the first external (non-own-domain,
-// non-noise) counterparty found — checking the sender, then falling back
-// to recipients for messages the user sent.
-function findCounterparty(thread: GmailThread, ownDomain: string) {
+// Own/internal addresses are excluded when looking for a thread's
+// counterparty. "Own" is an exact address match (so a colleague at the
+// same company doesn't get miscounted as the signed-in user); "internal"
+// additionally covers same-domain colleagues, but only when that domain
+// is an actual company domain — a shared webmail domain like gmail.com
+// can't be treated as "internal" since unrelated people share it.
+function isOwnOrInternal(
+  addr: ParsedAddress,
+  ownEmail: string,
+  ownDomain: string,
+  ownDomainIsConsumer: boolean
+) {
+  if (addr.email === ownEmail) return true;
+  return !ownDomainIsConsumer && addr.domain === ownDomain;
+}
+
+// Walks a thread's messages and returns the first external, non-noise
+// counterparty found — checking the sender, then falling back to
+// recipients for messages the user sent.
+function findCounterparty(
+  thread: GmailThread,
+  ownEmail: string,
+  ownDomain: string,
+  ownDomainIsConsumer: boolean
+) {
+  const isExternal = (a: ParsedAddress) =>
+    !isOwnOrInternal(a, ownEmail, ownDomain, ownDomainIsConsumer) &&
+    !isNoiseAddress(a.email);
+
   for (const message of thread.messages ?? []) {
     const from = getHeader(message, "From");
     const fromAddr = from ? parseAddress(from) : null;
-    if (fromAddr && fromAddr.domain !== ownDomain && !isNoiseAddress(fromAddr.email)) {
-      return fromAddr;
-    }
+    if (fromAddr && isExternal(fromAddr)) return fromAddr;
 
     const to = getHeader(message, "To");
     const externalTo = to
       ?.split(",")
       .map((p) => parseAddress(p.trim()))
-      .find((a) => a && a.domain !== ownDomain && !isNoiseAddress(a.email));
+      .find((a): a is ParsedAddress => a !== null && isExternal(a));
     if (externalTo) return externalTo;
   }
   return null;
@@ -91,7 +117,9 @@ export async function POST() {
     );
   }
 
-  const ownDomain = user.email.split("@")[1]!.toLowerCase();
+  const ownEmail = user.email.toLowerCase();
+  const ownDomain = ownEmail.split("@")[1]!;
+  const ownDomainIsConsumer = isConsumerEmailDomain(ownDomain);
 
   const threadIds = await listRecentThreadIds(accessToken, SYNC_WINDOW_DAYS);
   const threads = await mapWithConcurrency(
@@ -100,24 +128,25 @@ export async function POST() {
     (id) => getThread(accessToken, id)
   );
 
-  const clientsByDomain = new Map<string, ClientAggregate>();
+  const clientsByKey = new Map<string, ClientAggregate>();
 
   for (const thread of threads) {
     const messages = thread.messages ?? [];
     if (messages.length === 0) continue;
 
-    const counterparty = findCounterparty(thread, ownDomain);
+    const counterparty = findCounterparty(
+      thread,
+      ownEmail,
+      ownDomain,
+      ownDomainIsConsumer
+    );
     if (!counterparty) continue; // internal-only or noise, not a client
 
-    if (!clientsByDomain.has(counterparty.domain)) {
-      clientsByDomain.set(counterparty.domain, {
-        domain: counterparty.domain,
-        nameCounts: new Map(),
-        threads: [],
-        messages: [],
-      });
+    const key = groupingKeyFor(counterparty);
+    if (!clientsByKey.has(key)) {
+      clientsByKey.set(key, { groupingKey: key, nameCounts: new Map(), threads: [], messages: [] });
     }
-    const agg = clientsByDomain.get(counterparty.domain)!;
+    const agg = clientsByKey.get(key)!;
     if (counterparty.name) {
       agg.nameCounts.set(
         counterparty.name,
@@ -125,13 +154,14 @@ export async function POST() {
       );
     }
 
-    // Messages come back in chronological order; direction is derived by
-    // comparing the sender's domain against the signed-in user's own.
+    // Messages come back in chronological order; only the signed-in
+    // user's own exact address counts as "outbound" — a colleague
+    // replying doesn't count as the user having replied.
     for (const message of messages) {
       const from = getHeader(message, "From");
       const fromAddr = from ? parseAddress(from) : null;
       const direction: MessageDirection =
-        fromAddr?.domain === ownDomain ? "outbound" : "inbound";
+        fromAddr?.email === ownEmail ? "outbound" : "inbound";
       agg.messages.push({
         direction,
         dateMs: Number(message.internalDate),
@@ -146,7 +176,7 @@ export async function POST() {
       lastMessageAt: new Date(Number(lastMessage.internalDate)).toISOString(),
       messageCount: messages.length,
       lastMessageDirection:
-        lastFromAddr?.domain === ownDomain ? "outbound" : "inbound",
+        lastFromAddr?.email === ownEmail ? "outbound" : "inbound",
       lastMessageFrom: lastFrom,
       lastMessageSubject: getHeader(lastMessage, "Subject") ?? "(no subject)",
       lastMessageSnippet: lastMessage.snippet ?? "",
@@ -157,15 +187,15 @@ export async function POST() {
   let clientCount = 0;
   let threadCount = 0;
 
-  for (const agg of clientsByDomain.values()) {
+  for (const agg of clientsByKey.values()) {
     const bestName =
       [...agg.nameCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ??
-      agg.domain;
+      agg.groupingKey;
 
     const { data: client, error: clientError } = await supabase
       .from("clients")
       .upsert(
-        { user_id: user.id, name: bestName, email_domain: agg.domain },
+        { user_id: user.id, name: bestName, email_domain: agg.groupingKey },
         { onConflict: "user_id,email_domain" }
       )
       .select("id")

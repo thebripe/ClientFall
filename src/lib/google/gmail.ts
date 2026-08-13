@@ -137,3 +137,36 @@ export function isNoiseAddress(email: string): boolean {
   const localPart = email.split("@")[0] ?? "";
   return NOISE_LOCAL_PART.test(localPart);
 }
+
+// Shared webmail domains can't be used to tell people apart — two
+// unrelated clients might both happen to email from @gmail.com. Domain
+// grouping only makes sense for company domains.
+const CONSUMER_EMAIL_DOMAINS = new Set([
+  "gmail.com",
+  "googlemail.com",
+  "yahoo.com",
+  "ymail.com",
+  "outlook.com",
+  "hotmail.com",
+  "live.com",
+  "msn.com",
+  "icloud.com",
+  "me.com",
+  "mac.com",
+  "aol.com",
+  "protonmail.com",
+  "proton.me",
+  "gmx.com",
+  "zoho.com",
+]);
+
+export function isConsumerEmailDomain(domain: string): boolean {
+  return CONSUMER_EMAIL_DOMAINS.has(domain.toLowerCase());
+}
+
+// What clients get grouped by: a company domain buckets everyone at that
+// company into one client, but a shared consumer webmail domain can't
+// distinguish unrelated people, so those fall back to the exact address.
+export function groupingKeyFor(address: ParsedAddress): string {
+  return isConsumerEmailDomain(address.domain) ? address.email : address.domain;
+}
