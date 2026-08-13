@@ -7,11 +7,9 @@ export function SyncGmailButton() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<{
-    clients: number;
-    threads: number;
-    debug?: Record<string, unknown>;
-  } | null>(null);
+  const [result, setResult] = useState<{ clients: number; threads: number } | null>(
+    null
+  );
 
   async function handleSync() {
     setLoading(true);
@@ -42,17 +40,10 @@ export function SyncGmailButton() {
         {loading ? "Syncing last 60 days…" : "Sync Gmail"}
       </button>
       {result && (
-        <>
-          <p className="text-xs text-emerald-400">
-            Found {result.clients} client{result.clients === 1 ? "" : "s"} across{" "}
-            {result.threads} thread{result.threads === 1 ? "" : "s"}.
-          </p>
-          {result.debug && (
-            <pre className="whitespace-pre-wrap rounded bg-slate-950 p-2 text-[10px] text-slate-500">
-              {JSON.stringify(result.debug, null, 2)}
-            </pre>
-          )}
-        </>
+        <p className="text-xs text-emerald-400">
+          Found {result.clients} client{result.clients === 1 ? "" : "s"} across{" "}
+          {result.threads} thread{result.threads === 1 ? "" : "s"}.
+        </p>
       )}
       {error && <p className="text-xs text-red-400">{error}</p>}
     </div>

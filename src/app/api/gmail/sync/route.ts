@@ -130,15 +130,9 @@ export async function POST() {
 
   const clientsByKey = new Map<string, ClientAggregate>();
 
-  // Temporary debug counters — remove once we've confirmed sync finds
-  // real data end to end.
-  let threadsWithMessages = 0;
-  let threadsWithCounterparty = 0;
-
   for (const thread of threads) {
     const messages = thread.messages ?? [];
     if (messages.length === 0) continue;
-    threadsWithMessages++;
 
     const counterparty = findCounterparty(
       thread,
@@ -147,7 +141,6 @@ export async function POST() {
       ownDomainIsConsumer
     );
     if (!counterparty) continue; // internal-only or noise, not a client
-    threadsWithCounterparty++;
 
     const key = groupingKeyFor(counterparty);
     if (!clientsByKey.has(key)) {
@@ -193,7 +186,6 @@ export async function POST() {
   const today = new Date().toISOString().slice(0, 10);
   let clientCount = 0;
   let threadCount = 0;
-  const dbErrors: string[] = [];
 
   for (const agg of clientsByKey.values()) {
     const bestName =
@@ -210,8 +202,8 @@ export async function POST() {
       .single();
 
     if (clientError || !client) {
-      if (clientError && dbErrors.length < 3) {
-        dbErrors.push(`clients upsert (${agg.groupingKey}): ${clientError.message}`);
+      if (clientError) {
+        console.error(`clients upsert failed (${agg.groupingKey}):`, clientError.message);
       }
       continue;
     }
@@ -232,8 +224,8 @@ export async function POST() {
       .from("threads")
       .upsert(threadRows, { onConflict: "client_id,gmail_thread_id" });
 
-    if (threadError && dbErrors.length < 3) {
-      dbErrors.push(`threads upsert (${agg.groupingKey}): ${threadError.message}`);
+    if (threadError) {
+      console.error(`threads upsert failed (${agg.groupingKey}):`, threadError.message);
     }
     if (!threadError) threadCount += threadRows.length;
 
@@ -251,18 +243,5 @@ export async function POST() {
     );
   }
 
-  return NextResponse.json({
-    clients: clientCount,
-    threads: threadCount,
-    debug: {
-      ownEmail,
-      ownDomain,
-      ownDomainIsConsumer,
-      threadIdsFound: threadIds.length,
-      threadsFetched: threads.length,
-      threadsWithMessages,
-      threadsWithCounterparty,
-      dbErrors,
-    },
-  });
+  return NextResponse.json({ clients: clientCount, threads: threadCount });
 }
