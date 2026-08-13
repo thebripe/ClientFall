@@ -3,12 +3,13 @@
 Radar connects to a user's Gmail (read-only) and surfaces which client
 relationships are at risk of falling apart.
 
-This is the MVP scaffold: Next.js (App Router) + TypeScript + Tailwind,
-Supabase for auth + Postgres, wired up for a "Connect Gmail" flow via
-Google OAuth. The signal engine, AI extraction, scoring, dashboard visuals,
-and weekly digest cron are not built yet — this gets you to a working,
-end-to-end Google sign-in with the `gmail.readonly` scope granted and
-stored.
+Next.js (App Router) + TypeScript + Tailwind, Supabase for auth + Postgres.
+Google OAuth login, Gmail sync + client grouping, a deterministic
+attention-scoring engine, and a premium-feeling dashboard (hero insights,
+tiered client cards, a per-client detail page with a relationship
+timeline) are all working end to end. Not built yet: Claude-based AI
+extraction, the animated pulse-line visualization, and the weekly digest
+cron.
 
 ## 1. Create a Google Cloud project + OAuth client
 
@@ -129,16 +130,27 @@ catches senders a domain blocklist never would (airlines, colleges,
 streaming services) without maintaining one. See `isBulkMessage` in
 [`src/lib/google/gmail.ts`](./src/lib/google/gmail.ts).
 
-The dashboard's "Who needs attention" list is grouped into urgency tiers
-(healthy relationships are collapsed to a one-line count so the list
-stays focused), each row showing a plain-English reason (e.g. "Hasn't
-heard back in 6 days", "You're waiting on their reply", "Went quiet
-after an active exchange"), a suggested next action, and days since
-last contact. Set a client's contract value inline and Radar computes a
-dollar-at-risk figure (`score / 100 × contract value`) so the top of the
-dashboard shows a real "$X at risk right now" number. The scoring is a
-simple weighted rule, not AI — see
-[`src/lib/scoring/attention.ts`](./src/lib/scoring/attention.ts).
+The dashboard leads with a headline (clients needing attention today +
+total $ at risk, both animated with a count-up), then the "Who needs
+attention" list grouped into urgency tiers with premium-feeling cards
+(risk badge, $ opportunity, last contact, recommended action — healthy
+relationships collapse to a one-line count so the list stays focused).
+Click through any card for a full client detail page: relationship
+health, communication trend (are you replying faster or slower than
+before), deal momentum (message volume trending up/down), potential
+risks, a suggested next action with a confidence level and its
+reasoning, and a visual timeline of the relationship.
+
+None of this is AI-generated — it's all deterministic analysis of real
+message timing/direction/frequency (see
+[`src/lib/scoring/attention.ts`](./src/lib/scoring/attention.ts)). The
+"confidence" level is genuinely computed from how much data backs a
+given call (more reply history + more signals agreeing = higher), not
+a made-up percentage — a fabricated-sounding number felt worse than an
+honest label. Same reasoning for not shipping a portfolio-wide
+"response rate dropped X% this week" stat yet: that needs real
+week-over-week history, which `scores_daily` will accumulate the more
+this gets used, but faking it on day one wasn't worth it.
 
 If you land on `/auth/auth-code-error` instead, check:
 - The Supabase callback URL is added to the Google OAuth client's

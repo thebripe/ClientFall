@@ -15,8 +15,12 @@ import {
   type ParsedAddress,
 } from "@/lib/google/gmail";
 import {
+  assessConfidence,
+  buildInsights,
   computeAttentionScore,
   deriveAttentionSignal,
+  deriveCommunicationTrend,
+  deriveVolumeTrend,
   type ClientMessageSignal,
   type MessageDirection,
 } from "@/lib/scoring/attention";
@@ -234,7 +238,11 @@ export async function POST() {
     if (!threadError) threadCount += threadRows.length;
 
     const signal = deriveAttentionSignal(agg.messages);
+    const trend = deriveCommunicationTrend(agg.messages);
     const { score, reasons, suggestedAction } = computeAttentionScore(signal);
+    const insights = buildInsights(signal, trend);
+    const confidence = assessConfidence(signal, trend);
+    const momentum = deriveVolumeTrend(signal);
     const dollarAtRisk =
       typeof client.contract_value === "number"
         ? Math.round((score / 100) * client.contract_value)
@@ -246,7 +254,14 @@ export async function POST() {
         date: today,
         health_score: score,
         dollar_at_risk: dollarAtRisk,
-        top_reasons_json: { reasons, suggestedAction },
+        top_reasons_json: {
+          reasons,
+          suggestedAction,
+          insights,
+          confidence,
+          trend: trend.trend,
+          momentum,
+        },
       },
       { onConflict: "client_id,date" }
     );
