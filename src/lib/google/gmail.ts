@@ -28,12 +28,17 @@ export async function refreshGoogleAccessToken(
 }
 
 type GmailHeader = { name: string; value: string };
-type GmailMessage = {
+export type GmailMessage = {
   id: string;
   internalDate: string;
+  snippet?: string;
   payload?: { headers?: GmailHeader[] };
 };
 export type GmailThread = { id: string; messages: GmailMessage[] };
+
+export function getHeader(message: GmailMessage, name: string): string | undefined {
+  return message.payload?.headers?.find((h) => h.name === name)?.value;
+}
 
 async function gmailFetch(path: string, accessToken: string) {
   const res = await fetch(`${GMAIL_API}${path}`, {
@@ -74,7 +79,9 @@ export async function getThread(
   accessToken: string,
   threadId: string
 ): Promise<GmailThread> {
-  const path = `/threads/${threadId}?format=metadata&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Date`;
+  const path =
+    `/threads/${threadId}?format=metadata` +
+    `&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Date&metadataHeaders=Subject`;
   return gmailFetch(path, accessToken);
 }
 
@@ -120,4 +127,13 @@ export function parseAddressList(headerValue: string): ParsedAddress[] {
     .split(",")
     .map((part) => parseAddress(part.trim()))
     .filter((a): a is ParsedAddress => a !== null);
+}
+
+// Simple heuristic to skip obvious automated/bulk senders (newsletters,
+// notifications, etc.) so they don't get grouped into the client list.
+const NOISE_LOCAL_PART = /^(no-?reply|do-?not-?reply|notifications?|newsletters?|mailer-?daemon|automated|updates?|digest|bounce)s?(\+.*)?$/i;
+
+export function isNoiseAddress(email: string): boolean {
+  const localPart = email.split("@")[0] ?? "";
+  return NOISE_LOCAL_PART.test(localPart);
 }

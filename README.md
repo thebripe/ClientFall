@@ -71,12 +71,14 @@ stored.
      URL once deployed, e.g. `https://radar.vercel.app`).
    - Redirect URLs: add `http://localhost:3000/auth/callback` and, once
      deployed, `https://<your-vercel-domain>/auth/callback`.
-5. **Run the database schema**: *SQL Editor -> New query*, run
-   [`supabase/migrations/0001_init.sql`](./supabase/migrations/0001_init.sql)
-   then [`supabase/migrations/0002_clients_unique_domain.sql`](./supabase/migrations/0002_clients_unique_domain.sql),
-   in that order. This creates `users`, `google_tokens`, `clients`,
-   `threads`, `ai_extractions`, `scores_daily`, with Row Level Security
-   so each user can only see their own data.
+5. **Run the database schema**: *SQL Editor -> New query*, run these in
+   order:
+   [`0001_init.sql`](./supabase/migrations/0001_init.sql) ->
+   [`0002_clients_unique_domain.sql`](./supabase/migrations/0002_clients_unique_domain.sql) ->
+   [`0003_thread_message_summary.sql`](./supabase/migrations/0003_thread_message_summary.sql).
+   This creates `users`, `google_tokens`, `clients`, `threads`,
+   `ai_extractions`, `scores_daily`, with Row Level Security so each user
+   can only see their own data.
 
 ## 3. Fill in `.env.local`
 
@@ -108,10 +110,19 @@ read-only permission. You should land on `/dashboard` showing your email
 and a green "Gmail connected (read-only)" indicator.
 
 Once connected, click **Sync Gmail** on the dashboard to pull threads from
-the last 90 days and group them into clients by counterparty email domain
-(internal-only threads are skipped). Threads are capped at 300 per sync for
-now — fine for testing, but a real background job will be needed before
-this scales to large mailboxes.
+the last 60 days, group them into clients by counterparty email domain
+(internal-only and obviously-automated senders — no-reply, notifications,
+newsletters, etc. — are skipped), and compute a "who needs attention"
+score per client from reply direction, days since last contact, and
+sudden drop-offs in activity. Threads are capped at 300 per sync for now
+— fine for testing, but a real background job will be needed before this
+scales to large mailboxes.
+
+The dashboard's "Who needs attention" list is ranked highest-urgency
+first, each row showing a plain-English reason (e.g. "Hasn't heard back
+in 6 days", "You're waiting on their reply", "Went quiet after an active
+exchange") and days since last contact. The scoring is a simple weighted
+rule, not AI — see [`src/lib/scoring/attention.ts`](./src/lib/scoring/attention.ts).
 
 If you land on `/auth/auth-code-error` instead, check:
 - The Supabase callback URL is added to the Google OAuth client's
@@ -123,12 +134,14 @@ If you land on `/auth/auth-code-error` instead, check:
 
 ## What's next (not built yet)
 
-- The deterministic signal engine (reply latency, contact recency, etc.)
-- Claude-based AI extraction on top threads per client
-- The scoring engine (health score + dollar-at-risk)
-- The dashboard UI with the pulse-line visualization (share your
+- Claude-based AI extraction on top threads per client (tone shifts,
+  commitments, scope changes)
+- A dollar-at-risk figure per client (needs a contract-value input)
+- The dashboard UI's animated pulse-line visualization (share your
   HTML/CSS/JS prototype and it'll be matched closely)
 - The weekly digest cron via Resend
+- Out of scope for the MVP entirely: invoicing, calendar integration,
+  proposals, notes, multi-user/team features, ML-based scoring
 
 ## Known warning
 

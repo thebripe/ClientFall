@@ -1,40 +1,58 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import {
+  getHeader,
   getThread,
+  isNoiseAddress,
   listRecentThreadIds,
   mapWithConcurrency,
   parseAddress,
   refreshGoogleAccessToken,
   type GmailThread,
 } from "@/lib/google/gmail";
+import {
+  computeAttentionScore,
+  deriveAttentionSignal,
+  type ClientMessageSignal,
+  type MessageDirection,
+} from "@/lib/scoring/attention";
 
-const SYNC_WINDOW_DAYS = 90;
+const SYNC_WINDOW_DAYS = 60;
 const THREAD_FETCH_CONCURRENCY = 8;
+
+type ThreadSummary = {
+  id: string;
+  lastMessageAt: string;
+  messageCount: number;
+  lastMessageDirection: MessageDirection;
+  lastMessageFrom: string;
+  lastMessageSubject: string;
+  lastMessageSnippet: string;
+};
 
 type ClientAggregate = {
   domain: string;
   nameCounts: Map<string, number>;
-  threads: { id: string; lastMessageAt: string; messageCount: number }[];
+  threads: ThreadSummary[];
+  messages: ClientMessageSignal[];
 };
 
-// Walks a thread's messages and returns the first external (non-own-domain)
-// counterparty found — checking the sender, then falling back to
-// recipients for messages the user sent.
+// Walks a thread's messages and returns the first external (non-own-domain,
+// non-noise) counterparty found — checking the sender, then falling back
+// to recipients for messages the user sent.
 function findCounterparty(thread: GmailThread, ownDomain: string) {
   for (const message of thread.messages ?? []) {
-    const headers = message.payload?.headers ?? [];
-    const from = headers.find((h) => h.name === "From")?.value;
+    const from = getHeader(message, "From");
     const fromAddr = from ? parseAddress(from) : null;
-    if (fromAddr && fromAddr.domain !== ownDomain) {
+    if (fromAddr && fromAddr.domain !== ownDomain && !isNoiseAddress(fromAddr.email)) {
       return fromAddr;
     }
 
-    const to = headers.find((h) => h.name === "To")?.value;
+    const to = getHeader(message, "To");
     const externalTo = to
       ?.split(",")
       .map((p) => parseAddress(p.trim()))
-      .find((a) => a && a.domain !== ownDomain);
+      .find((a) => a && a.domain !== ownDomain && !isNoiseAddress(a.email));
     if (externalTo) return externalTo;
   }
   return null;
@@ -89,16 +107,14 @@ export async function POST() {
     if (messages.length === 0) continue;
 
     const counterparty = findCounterparty(thread, ownDomain);
-    if (!counterparty) continue; // internal-only thread, not a client
-
-    const lastMessage = messages[messages.length - 1];
-    const lastMessageAt = new Date(Number(lastMessage.internalDate)).toISOString();
+    if (!counterparty) continue; // internal-only or noise, not a client
 
     if (!clientsByDomain.has(counterparty.domain)) {
       clientsByDomain.set(counterparty.domain, {
         domain: counterparty.domain,
         nameCounts: new Map(),
         threads: [],
+        messages: [],
       });
     }
     const agg = clientsByDomain.get(counterparty.domain)!;
@@ -108,13 +124,36 @@ export async function POST() {
         (agg.nameCounts.get(counterparty.name) ?? 0) + 1
       );
     }
+
+    // Messages come back in chronological order; direction is derived by
+    // comparing the sender's domain against the signed-in user's own.
+    for (const message of messages) {
+      const from = getHeader(message, "From");
+      const fromAddr = from ? parseAddress(from) : null;
+      const direction: MessageDirection =
+        fromAddr?.domain === ownDomain ? "outbound" : "inbound";
+      agg.messages.push({
+        direction,
+        dateMs: Number(message.internalDate),
+      });
+    }
+
+    const lastMessage = messages[messages.length - 1];
+    const lastFrom = getHeader(lastMessage, "From") ?? "";
+    const lastFromAddr = parseAddress(lastFrom);
     agg.threads.push({
       id: thread.id,
-      lastMessageAt,
+      lastMessageAt: new Date(Number(lastMessage.internalDate)).toISOString(),
       messageCount: messages.length,
+      lastMessageDirection:
+        lastFromAddr?.domain === ownDomain ? "outbound" : "inbound",
+      lastMessageFrom: lastFrom,
+      lastMessageSubject: getHeader(lastMessage, "Subject") ?? "(no subject)",
+      lastMessageSnippet: lastMessage.snippet ?? "",
     });
   }
 
+  const today = new Date().toISOString().slice(0, 10);
   let clientCount = 0;
   let threadCount = 0;
 
@@ -135,18 +174,35 @@ export async function POST() {
     if (clientError || !client) continue;
     clientCount++;
 
-    const rows = agg.threads.map((t) => ({
+    const threadRows = agg.threads.map((t) => ({
       client_id: client.id,
       gmail_thread_id: t.id,
       last_message_at: t.lastMessageAt,
       message_count: t.messageCount,
+      last_message_direction: t.lastMessageDirection,
+      last_message_from: t.lastMessageFrom,
+      last_message_subject: t.lastMessageSubject,
+      last_message_snippet: t.lastMessageSnippet,
     }));
 
     const { error: threadError } = await supabase
       .from("threads")
-      .upsert(rows, { onConflict: "client_id,gmail_thread_id" });
+      .upsert(threadRows, { onConflict: "client_id,gmail_thread_id" });
 
-    if (!threadError) threadCount += rows.length;
+    if (!threadError) threadCount += threadRows.length;
+
+    const signal = deriveAttentionSignal(agg.messages);
+    const { score, reasons } = computeAttentionScore(signal);
+
+    await supabase.from("scores_daily").upsert(
+      {
+        client_id: client.id,
+        date: today,
+        health_score: score,
+        top_reasons_json: reasons,
+      },
+      { onConflict: "client_id,date" }
+    );
   }
 
   return NextResponse.json({ clients: clientCount, threads: threadCount });
