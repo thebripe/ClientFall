@@ -193,6 +193,7 @@ export async function POST() {
   const today = new Date().toISOString().slice(0, 10);
   let clientCount = 0;
   let threadCount = 0;
+  const dbErrors: string[] = [];
 
   for (const agg of clientsByKey.values()) {
     const bestName =
@@ -208,7 +209,12 @@ export async function POST() {
       .select("id")
       .single();
 
-    if (clientError || !client) continue;
+    if (clientError || !client) {
+      if (clientError && dbErrors.length < 3) {
+        dbErrors.push(`clients upsert (${agg.groupingKey}): ${clientError.message}`);
+      }
+      continue;
+    }
     clientCount++;
 
     const threadRows = agg.threads.map((t) => ({
@@ -226,6 +232,9 @@ export async function POST() {
       .from("threads")
       .upsert(threadRows, { onConflict: "client_id,gmail_thread_id" });
 
+    if (threadError && dbErrors.length < 3) {
+      dbErrors.push(`threads upsert (${agg.groupingKey}): ${threadError.message}`);
+    }
     if (!threadError) threadCount += threadRows.length;
 
     const signal = deriveAttentionSignal(agg.messages);
@@ -253,6 +262,7 @@ export async function POST() {
       threadsFetched: threads.length,
       threadsWithMessages,
       threadsWithCounterparty,
+      dbErrors,
     },
   });
 }
