@@ -86,6 +86,71 @@ export async function getThread(
   return gmailFetch(path, accessToken);
 }
 
+type GmailPart = {
+  mimeType?: string;
+  body?: { data?: string };
+  parts?: GmailPart[];
+};
+export type GmailFullMessage = GmailMessage & {
+  payload?: GmailMessage["payload"] & { mimeType?: string; body?: { data?: string }; parts?: GmailPart[] };
+};
+export type GmailFullThread = { id: string; messages: GmailFullMessage[] };
+
+// Full message bodies, fetched only at AI-analysis time for a small number
+// of threads — never stored. Sync stays on format=metadata; this is a
+// separate, deliberately narrower call so routine syncing doesn't pull
+// full email content it doesn't need.
+export async function getThreadFull(
+  accessToken: string,
+  threadId: string
+): Promise<GmailFullThread> {
+  const path = `/threads/${threadId}?format=full`;
+  return gmailFetch(path, accessToken);
+}
+
+function base64UrlDecode(data: string): string {
+  const normalized = data.replace(/-/g, "+").replace(/_/g, "/");
+  return Buffer.from(normalized, "base64").toString("utf-8");
+}
+
+function stripHtml(html: string): string {
+  return html
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+// Prefers text/plain; falls back to a naive HTML-to-text strip. Good enough
+// for feeding an LLM prompt, not a general-purpose email renderer.
+export function extractPlainText(message: GmailFullMessage): string {
+  let plain: string | null = null;
+  let html: string | null = null;
+
+  function walk(part?: GmailPart) {
+    if (!part) return;
+    if (part.mimeType === "text/plain" && part.body?.data && !plain) {
+      plain = base64UrlDecode(part.body.data);
+    } else if (part.mimeType === "text/html" && part.body?.data && !html) {
+      html = base64UrlDecode(part.body.data);
+    }
+    for (const child of part.parts ?? []) walk(child);
+  }
+
+  walk(message.payload);
+
+  if (plain) return (plain as string).trim();
+  if (html) return stripHtml(html as string);
+  return message.snippet ?? "";
+}
+
 export async function mapWithConcurrency<T, R>(
   items: T[],
   limit: number,

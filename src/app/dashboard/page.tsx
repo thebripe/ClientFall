@@ -2,7 +2,9 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { SignOutButton } from "@/components/sign-out-button";
 import { DashboardContent } from "@/components/dashboard-content";
-import type { ScoreRow } from "@/lib/types";
+import { firstIntelligence, type ScoreRow } from "@/lib/types";
+
+const PRIORITY_THRESHOLD = 30;
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -21,7 +23,7 @@ export default async function DashboardPage() {
       supabase
         .from("scores_daily")
         .select(
-          "health_score, dollar_at_risk, top_reasons_json, date, clients(id, name, email_domain, contract_value, threads(last_message_at))"
+          "health_score, dollar_at_risk, top_reasons_json, date, clients(id, name, email_domain, contract_value, threads(last_message_at), client_intelligence(analyzed_at, analyzed_through, summary, extraction_json))"
         )
         .order("date", { ascending: false }),
       supabase.from("clients").select("id", { count: "exact", head: true }),
@@ -58,6 +60,24 @@ export default async function DashboardPage() {
     .trim()
     .split(" ")[0] || null;
 
+  // Priority clients (score >= 30, same threshold as the rest of the app)
+  // with no conversation-intelligence analysis yet, or with real thread
+  // activity newer than their last analysis.
+  const readyToAnalyzeCount = ranked.filter((row) => {
+    if (row.health_score < PRIORITY_THRESHOLD) return false;
+    const client = row.clients!;
+    const latestActivity = client.threads
+      .map((t) => t.last_message_at)
+      .filter((d): d is string => Boolean(d))
+      .sort()
+      .pop();
+    if (!latestActivity) return false;
+
+    const intel = firstIntelligence(client.client_intelligence);
+    if (!intel) return true;
+    return new Date(latestActivity) > new Date(intel.analyzed_through);
+  }).length;
+
   return (
     <main className="min-h-screen bg-[#0a0e17] px-6 py-10 text-slate-100">
       <div className="mx-auto flex max-w-2xl flex-col gap-6">
@@ -75,13 +95,14 @@ export default async function DashboardPage() {
           lastSyncedAt={profileRow?.last_synced_at ?? null}
           reviewedClientCount={reviewedClientCount}
           reviewedThreadCount={reviewedThreadCount}
+          readyToAnalyzeCount={readyToAnalyzeCount}
         />
 
         <div className="rounded-lg border border-dashed border-slate-800 p-6 text-sm text-slate-500">
-          Coming next: AI-read tone shifts and commitment tracking, the animated
-          pulse-line visualization, and the weekly digest email. Not in this MVP:
-          invoicing, calendar integration, proposals, notes, multi-user teams, or
-          ML-based scoring.
+          Coming next: the animated pulse-line visualization and a weekly digest
+          email. Not in this MVP: sending email on your behalf, automatic or
+          scheduled analysis (you choose when Claude runs), invoicing, calendar
+          integration, proposals, notes, multi-user teams, or ML-based scoring.
         </div>
       </div>
     </main>

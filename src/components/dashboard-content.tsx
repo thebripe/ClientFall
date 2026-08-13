@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ClientCard } from "@/components/client-card";
 import { SyncingOverlay } from "@/components/syncing-overlay";
 import { MorningBriefing } from "@/components/morning-briefing";
+import { Walkthrough } from "@/components/walkthrough";
 import type { ScoreRow } from "@/lib/types";
 
 export function DashboardContent({
@@ -16,6 +17,7 @@ export function DashboardContent({
   lastSyncedAt,
   reviewedClientCount,
   reviewedThreadCount,
+  readyToAnalyzeCount,
 }: {
   userEmail: string;
   firstName: string | null;
@@ -25,11 +27,15 @@ export function DashboardContent({
   lastSyncedAt: string | null;
   reviewedClientCount: number;
   reviewedThreadCount: number;
+  readyToAnalyzeCount: number;
 }) {
   const router = useRouter();
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [lastSyncMsg, setLastSyncMsg] = useState<string | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null);
+  const [lastAnalyzeMsg, setLastAnalyzeMsg] = useState<string | null>(null);
 
   async function handleSync() {
     setSyncing(true);
@@ -54,6 +60,29 @@ export function DashboardContent({
     router.refresh();
   }
 
+  async function handleAnalyze() {
+    setAnalyzing(true);
+    setAnalyzeError(null);
+    setLastAnalyzeMsg(null);
+
+    const res = await fetch("/api/intelligence/analyze", { method: "POST" });
+    const data = await res.json();
+
+    if (!res.ok) {
+      setAnalyzeError(data.error ?? "Analysis failed");
+      setAnalyzing(false);
+      return;
+    }
+
+    setLastAnalyzeMsg(
+      data.analyzed > 0
+        ? `Analyzed ${data.analyzed} conversation${data.analyzed === 1 ? "" : "s"}.`
+        : "Nothing new to analyze."
+    );
+    setAnalyzing(false);
+    router.refresh();
+  }
+
   const needsAttention = [...ranked]
     .filter((r) => r.health_score >= 30)
     .sort((a, b) => b.health_score - a.health_score);
@@ -63,6 +92,7 @@ export function DashboardContent({
 
   return (
     <div className="flex flex-col gap-6">
+      <Walkthrough />
       <MorningBriefing
         firstName={firstName}
         gmailConnected={gmailConnected}
@@ -101,11 +131,43 @@ export function DashboardContent({
         {syncError && <p className="px-1 text-xs text-red-400">{syncError}</p>}
       </div>
 
+      {readyToAnalyzeCount > 0 && (
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between rounded-lg border border-slate-800 bg-slate-900/60 px-4 py-3 text-sm">
+            <div>
+              <p className="text-slate-200">
+                {readyToAnalyzeCount} client{readyToAnalyzeCount === 1 ? "" : "s"} ready for deeper
+                analysis
+              </p>
+              <p className="text-xs text-slate-500">
+                Claude reads recent conversations for objections, buying signals, and open
+                questions — you choose when this runs.
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              {lastAnalyzeMsg && !analyzing && (
+                <span className="text-xs text-emerald-400">{lastAnalyzeMsg}</span>
+              )}
+              <button
+                onClick={handleAnalyze}
+                disabled={analyzing}
+                className="rounded-md bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-900 transition hover:bg-white disabled:opacity-60"
+              >
+                {analyzing ? "Analyzing…" : "Analyze conversations"}
+              </button>
+            </div>
+          </div>
+          {analyzeError && <p className="px-1 text-xs text-red-400">{analyzeError}</p>}
+        </div>
+      )}
+
       <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-6">
         <h2 className="mb-1 text-sm font-medium text-slate-300">Who needs attention</h2>
         <p className="mb-4 text-xs text-slate-600">
           Newsletters, receipts, and automated mail are filtered out automatically — this is
-          only real back-and-forth correspondence.
+          only real back-and-forth correspondence. Scores and reasons below are calculated
+          directly from reply timing and volume, not AI — open a client to have Claude read the
+          actual conversation for objections, buying signals, and open questions.
         </p>
 
         {syncing ? (

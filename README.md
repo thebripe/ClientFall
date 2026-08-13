@@ -5,11 +5,13 @@ relationships are at risk of falling apart.
 
 Next.js (App Router) + TypeScript + Tailwind, Supabase for auth + Postgres.
 Google OAuth login, Gmail sync + client grouping, a deterministic
-attention-scoring engine, and a premium-feeling dashboard (hero insights,
+attention-scoring engine, a premium-feeling dashboard (hero insights,
 tiered client cards, a per-client detail page with a relationship
-timeline) are all working end to end. Not built yet: Claude-based AI
-extraction, the animated pulse-line visualization, and the weekly digest
-cron.
+timeline), Claude-powered conversation intelligence (objections, buying
+signals, open questions, commitments — read on demand, not automatic),
+and AI-drafted follow-up emails (draft-only, nothing is ever sent for
+you) are all working end to end. Not built yet: the animated pulse-line
+visualization and the weekly digest cron.
 
 ## 1. Create a Google Cloud project + OAuth client
 
@@ -77,10 +79,11 @@ cron.
    [`0001_init.sql`](./supabase/migrations/0001_init.sql) ->
    [`0002_clients_unique_domain.sql`](./supabase/migrations/0002_clients_unique_domain.sql) ->
    [`0003_thread_message_summary.sql`](./supabase/migrations/0003_thread_message_summary.sql) ->
-   [`0004_users_last_synced_at.sql`](./supabase/migrations/0004_users_last_synced_at.sql).
+   [`0004_users_last_synced_at.sql`](./supabase/migrations/0004_users_last_synced_at.sql) ->
+   [`0005_client_intelligence.sql`](./supabase/migrations/0005_client_intelligence.sql).
    This creates `users`, `google_tokens`, `clients`, `threads`,
-   `ai_extractions`, `scores_daily`, with Row Level Security so each user
-   can only see their own data.
+   `ai_extractions`, `scores_daily`, `client_intelligence`, with Row Level
+   Security so each user can only see their own data.
 
 ## 3. Fill in `.env.local`
 
@@ -96,7 +99,7 @@ Then fill in:
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase Project Settings -> API -> anon public key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase Project Settings -> API -> service_role key (not used yet) |
 | `GOOGLE_OAUTH_CLIENT_ID` / `GOOGLE_OAUTH_CLIENT_SECRET` | Same values pasted into the Supabase Dashboard (step 2.3). Also needed here so the Gmail sync route can refresh its own access token server-side. |
-| `ANTHROPIC_API_KEY` | Not used yet — needed for the AI extraction step |
+| `ANTHROPIC_API_KEY` | Required — get one from the [Anthropic Console](https://console.anthropic.com/). Powers "Analyze conversations" and "Draft follow-up" (model: `claude-opus-5`). Without it, those two features return errors; everything else (sync, scoring, dashboard) still works. |
 | `RESEND_API_KEY` | Not used yet — needed for the weekly digest email step |
 
 ## 4. Run it
@@ -174,6 +177,42 @@ honest label. Same reasoning for not shipping a portfolio-wide
 week-over-week history, which `scores_daily` will accumulate the more
 this gets used, but faking it on day one wasn't worth it.
 
+### Conversation intelligence (Claude)
+
+Once a client's attention score reaches the "needs attention" threshold
+(30+, same threshold used everywhere else in the app), a "ready for
+deeper analysis" bar appears on the dashboard with an **Analyze
+conversations** button. Clicking it sends that client's most recent
+threads (up to 5, full message bodies fetched from Gmail just for this
+call — never stored in Postgres) to Claude, which extracts objections,
+pricing/budget mentions, buying signals, hesitation/stalling language,
+competitor mentions, unanswered open questions, and commitments made by
+either side (and whether they were kept), plus a 1-2 sentence summary.
+This is stored in `client_intelligence` (one row per client, overwritten
+on re-analysis — no history is kept). The top 1-2 signals surface inline
+on the client's dashboard card; the full breakdown is on the client
+detail page.
+
+This never runs automatically — no cron, no "on every sync." It's
+triggered by your click, and a client is only re-analyzed if there's
+been real thread activity since the last analysis, so you're not paying
+for a re-run that would return the same answer. This is a genuinely AI
+step (unlike the scoring engine above) and is labeled as such everywhere
+it appears.
+
+### AI-drafted follow-ups
+
+On any client detail page, **Draft follow-up** calls Claude with that
+client's real thread history and extracted intelligence (if analyzed)
+and asks for a follow-up email that references something actually said
+in the conversation — an open question, an objection, a prior
+commitment. If there isn't enough real context to write something
+specific, it says so instead of generating generic "just checking in"
+filler. The draft lands in an editable subject + body you can tweak,
+then **Copy** or **Open in email** (a `mailto:` link prefilled with your
+edits). There is no send button and no send pipeline in this app —
+Radar never sends email on your behalf.
+
 If you land on `/auth/auth-code-error` instead, check:
 - The Supabase callback URL is added to the Google OAuth client's
   authorized redirect URIs.
@@ -184,12 +223,14 @@ If you land on `/auth/auth-code-error` instead, check:
 
 ## What's next (not built yet)
 
-- Claude-based AI extraction on top threads per client (tone shifts,
-  commitments, scope changes)
 - The dashboard UI's animated pulse-line visualization (share your
   HTML/CSS/JS prototype and it'll be matched closely)
 - The weekly digest cron via Resend
-- Out of scope for the MVP entirely: invoicing, calendar integration,
+- Tone-shift detection across a relationship's full history (today's
+  conversation intelligence looks at the 5 most recent threads, not the
+  whole relationship)
+- Out of scope for the MVP entirely: sending email on your behalf,
+  scheduled/automatic AI analysis, invoicing, calendar integration,
   proposals, notes, multi-user/team features, ML-based scoring
 
 ## Known warning

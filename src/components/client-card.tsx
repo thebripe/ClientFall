@@ -1,7 +1,18 @@
 import Link from "next/link";
 import { ContractValueInput } from "@/components/contract-value-input";
 import { RISK_META, formatMoney, relativeDays, type RiskTier } from "@/lib/ui/risk";
-import type { ScoreRow } from "@/lib/types";
+import { firstIntelligence, type ClientIntelligenceExtraction, type ScoreRow } from "@/lib/types";
+
+// Risk signals first (they justify urgency), then open questions, then
+// positive signals — capped at 2 so a card stays scannable in ~2 seconds.
+function topSignals(extraction: ClientIntelligenceExtraction): string[] {
+  return [
+    ...extraction.objections,
+    ...extraction.hesitation_signals,
+    ...extraction.open_questions,
+    ...extraction.buying_signals,
+  ].slice(0, 2);
+}
 
 export function ClientCard({
   row,
@@ -22,6 +33,8 @@ export function ClientCard({
       .pop() ?? null;
   const topReason = row.top_reasons_json?.reasons?.[0] ?? "";
   const suggestedAction = row.top_reasons_json?.suggestedAction;
+  const intelligence = firstIntelligence(client.client_intelligence);
+  const signals = intelligence?.extraction_json ? topSignals(intelligence.extraction_json) : [];
 
   return (
     <div
@@ -48,6 +61,21 @@ export function ClientCard({
         <p className="text-sm text-slate-400">{topReason}</p>
         {suggestedAction && (
           <p className={`text-xs font-medium ${meta.text}`}>→ {suggestedAction}</p>
+        )}
+
+        {intelligence?.extraction_json?.relevant === false && (
+          <p className="text-xs text-amber-400">
+            ⚠ AI flagged this as possibly not a real client relationship
+          </p>
+        )}
+        {signals.length > 0 && (
+          <ul className="mt-0.5 flex flex-col gap-0.5 border-t border-slate-800/60 pt-1.5">
+            {signals.map((s) => (
+              <li key={s} className="text-xs text-slate-500">
+                ✦ {s}
+              </li>
+            ))}
+          </ul>
         )}
       </div>
 
