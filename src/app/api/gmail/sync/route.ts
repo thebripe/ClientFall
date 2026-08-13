@@ -4,13 +4,14 @@ import {
   getHeader,
   getThread,
   groupingKeyFor,
+  isBulkMessage,
   isConsumerEmailDomain,
   isNoiseAddress,
   listRecentThreadIds,
   mapWithConcurrency,
   parseAddress,
   refreshGoogleAccessToken,
-  type GmailThread,
+  type GmailMessage,
   type ParsedAddress,
 } from "@/lib/google/gmail";
 import {
@@ -56,11 +57,11 @@ function isOwnOrInternal(
   return !ownDomainIsConsumer && addr.domain === ownDomain;
 }
 
-// Walks a thread's messages and returns the first external, non-noise
-// counterparty found — checking the sender, then falling back to
-// recipients for messages the user sent.
+// Walks a thread's (already bulk-filtered) messages and returns the
+// first external, non-noise counterparty found — checking the sender,
+// then falling back to recipients for messages the user sent.
 function findCounterparty(
-  thread: GmailThread,
+  messages: GmailMessage[],
   ownEmail: string,
   ownDomain: string,
   ownDomainIsConsumer: boolean
@@ -69,7 +70,7 @@ function findCounterparty(
     !isOwnOrInternal(a, ownEmail, ownDomain, ownDomainIsConsumer) &&
     !isNoiseAddress(a.email);
 
-  for (const message of thread.messages ?? []) {
+  for (const message of messages) {
     const from = getHeader(message, "From");
     const fromAddr = from ? parseAddress(from) : null;
     if (fromAddr && isExternal(fromAddr)) return fromAddr;
@@ -131,11 +132,14 @@ export async function POST() {
   const clientsByKey = new Map<string, ClientAggregate>();
 
   for (const thread of threads) {
-    const messages = thread.messages ?? [];
+    // Drop newsletters/receipts/notifications/announcements before doing
+    // anything else — see isBulkMessage for why this catches senders no
+    // domain or local-part heuristic would.
+    const messages = (thread.messages ?? []).filter((m) => !isBulkMessage(m));
     if (messages.length === 0) continue;
 
     const counterparty = findCounterparty(
-      thread,
+      messages,
       ownEmail,
       ownDomain,
       ownDomainIsConsumer
@@ -198,7 +202,7 @@ export async function POST() {
         { user_id: user.id, name: bestName, email_domain: agg.groupingKey },
         { onConflict: "user_id,email_domain" }
       )
-      .select("id")
+      .select("id, contract_value")
       .single();
 
     if (clientError || !client) {
@@ -230,14 +234,19 @@ export async function POST() {
     if (!threadError) threadCount += threadRows.length;
 
     const signal = deriveAttentionSignal(agg.messages);
-    const { score, reasons } = computeAttentionScore(signal);
+    const { score, reasons, suggestedAction } = computeAttentionScore(signal);
+    const dollarAtRisk =
+      typeof client.contract_value === "number"
+        ? Math.round((score / 100) * client.contract_value)
+        : null;
 
     await supabase.from("scores_daily").upsert(
       {
         client_id: client.id,
         date: today,
         health_score: score,
-        top_reasons_json: reasons,
+        dollar_at_risk: dollarAtRisk,
+        top_reasons_json: { reasons, suggestedAction },
       },
       { onConflict: "client_id,date" }
     );

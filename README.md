@@ -114,18 +114,31 @@ the last 60 days, group them into clients by counterparty (company
 domain when the sender uses one, exact email address when they're on a
 shared consumer webmail domain like gmail.com/yahoo.com/outlook.com —
 otherwise two unrelated people on the same provider would get merged
-into one "client"), skip internal-only and obviously-automated threads
-(no-reply, notifications, newsletters, etc.), and compute a "who needs
-attention" score per client from reply direction, days since last
-contact, and sudden drop-offs in activity. Threads are capped at 300 per
-sync for now — fine for testing, but a real background job will be
-needed before this scales to large mailboxes.
+into one "client"), and compute a "who needs attention" score per client
+from reply direction, days since last contact, and sudden drop-offs in
+activity. Threads are capped at 300 per sync for now — fine for testing,
+but a real background job will be needed before this scales to large
+mailboxes.
 
-The dashboard's "Who needs attention" list is ranked highest-urgency
-first, each row showing a plain-English reason (e.g. "Hasn't heard back
-in 6 days", "You're waiting on their reply", "Went quiet after an active
-exchange") and days since last contact. The scoring is a simple weighted
-rule, not AI — see [`src/lib/scoring/attention.ts`](./src/lib/scoring/attention.ts).
+**Filtering out noise**: internal-only threads are skipped, as is any
+message carrying a `List-Unsubscribe` or `Precedence: bulk/list` header
+— the signal mailbox providers require bulk senders (newsletters,
+receipts, shipping updates, admissions blasts, etc.) to include. A
+plain no-reply/notifications local-part regex backstops that. This
+catches senders a domain blocklist never would (airlines, colleges,
+streaming services) without maintaining one. See `isBulkMessage` in
+[`src/lib/google/gmail.ts`](./src/lib/google/gmail.ts).
+
+The dashboard's "Who needs attention" list is grouped into urgency tiers
+(healthy relationships are collapsed to a one-line count so the list
+stays focused), each row showing a plain-English reason (e.g. "Hasn't
+heard back in 6 days", "You're waiting on their reply", "Went quiet
+after an active exchange"), a suggested next action, and days since
+last contact. Set a client's contract value inline and Radar computes a
+dollar-at-risk figure (`score / 100 × contract value`) so the top of the
+dashboard shows a real "$X at risk right now" number. The scoring is a
+simple weighted rule, not AI — see
+[`src/lib/scoring/attention.ts`](./src/lib/scoring/attention.ts).
 
 If you land on `/auth/auth-code-error` instead, check:
 - The Supabase callback URL is added to the Google OAuth client's
@@ -139,7 +152,6 @@ If you land on `/auth/auth-code-error` instead, check:
 
 - Claude-based AI extraction on top threads per client (tone shifts,
   commitments, scope changes)
-- A dollar-at-risk figure per client (needs a contract-value input)
 - The dashboard UI's animated pulse-line visualization (share your
   HTML/CSS/JS prototype and it'll be matched closely)
 - The weekly digest cron via Resend

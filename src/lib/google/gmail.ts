@@ -81,7 +81,8 @@ export async function getThread(
 ): Promise<GmailThread> {
   const path =
     `/threads/${threadId}?format=metadata` +
-    `&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Date&metadataHeaders=Subject`;
+    `&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Date&metadataHeaders=Subject` +
+    `&metadataHeaders=List-Unsubscribe&metadataHeaders=Precedence`;
   return gmailFetch(path, accessToken);
 }
 
@@ -129,13 +130,26 @@ export function parseAddressList(headerValue: string): ParsedAddress[] {
     .filter((a): a is ParsedAddress => a !== null);
 }
 
-// Simple heuristic to skip obvious automated/bulk senders (newsletters,
-// notifications, etc.) so they don't get grouped into the client list.
+// Backstop heuristic for obvious automated/bulk sender addresses.
 const NOISE_LOCAL_PART = /^(no-?reply|do-?not-?reply|notifications?|newsletters?|mailer-?daemon|automated|updates?|digest|bounce)s?(\+.*)?$/i;
 
 export function isNoiseAddress(email: string): boolean {
   const localPart = email.split("@")[0] ?? "";
   return NOISE_LOCAL_PART.test(localPart);
+}
+
+// The real signal for "this is bulk mail, not a person": senders that
+// blast newsletters, receipts, shipping updates, admissions announcements,
+// etc. are required (CAN-SPAM / mailbox provider rules) to carry a
+// List-Unsubscribe header, and bulk-sending infrastructure commonly sets
+// Precedence: bulk/list. An actual human emailing 1:1 essentially never
+// has either. This catches senders no local-part regex or domain
+// blocklist would (airlines, colleges, streaming services, etc.) without
+// having to maintain a list of company domains.
+export function isBulkMessage(message: GmailMessage): boolean {
+  if (getHeader(message, "List-Unsubscribe")) return true;
+  const precedence = getHeader(message, "Precedence")?.toLowerCase();
+  return precedence === "bulk" || precedence === "list" || precedence === "junk";
 }
 
 // Shared webmail domains can't be used to tell people apart — two
