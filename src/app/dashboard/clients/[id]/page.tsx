@@ -156,13 +156,19 @@ export default async function ClientDetailPage({
               <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
                 Potential risks
               </h2>
-              <ul className="flex flex-col gap-1.5">
-                {topReasons?.reasons.map((reason) => (
-                  <li key={reason} className="text-sm text-slate-300">
-                    • {reason}
-                  </li>
-                ))}
-              </ul>
+              {topReasons?.reasons?.length ? (
+                <ul className="flex flex-col gap-1.5">
+                  {topReasons.reasons.map((reason) => (
+                    <li key={reason} className="text-sm text-slate-300">
+                      • {reason}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-slate-500">
+                  Sync Gmail again to refresh this client&apos;s analysis.
+                </p>
+              )}
             </section>
 
             <section className="animate-fade-in-up rounded-lg border border-slate-800 bg-slate-900/60 p-5">
@@ -177,16 +183,20 @@ export default async function ClientDetailPage({
                 )}
               </div>
               <p className={`mt-2 text-sm font-medium ${meta.text}`}>
-                {topReasons?.suggestedAction}
+                {topReasons?.suggestedAction ?? "Sync Gmail again to refresh this client's analysis."}
               </p>
-              <p className="mt-2 text-xs text-slate-600">Why:</p>
-              <ul className="mt-1 flex flex-col gap-1">
-                {topReasons?.reasons.map((reason) => (
-                  <li key={reason} className="text-xs text-slate-500">
-                    • {reason}
-                  </li>
-                ))}
-              </ul>
+              {topReasons?.reasons?.length ? (
+                <>
+                  <p className="mt-2 text-xs text-slate-600">Why:</p>
+                  <ul className="mt-1 flex flex-col gap-1">
+                    {topReasons.reasons.map((reason) => (
+                      <li key={reason} className="text-xs text-slate-500">
+                        • {reason}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : null}
             </section>
 
             <section className="animate-fade-in-up rounded-lg border border-slate-800 bg-slate-900/60 p-5">
