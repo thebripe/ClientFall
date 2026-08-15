@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { SignOutButton } from "@/components/sign-out-button";
+import { DisconnectGmailButton } from "@/components/disconnect-gmail-button";
 import { DashboardContent } from "@/components/dashboard-content";
 import { firstIntelligence, type ScoreRow } from "@/lib/types";
 
@@ -83,7 +84,10 @@ export default async function DashboardPage() {
       <div className="mx-auto flex max-w-2xl flex-col gap-6">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold">Radar</h1>
-          <SignOutButton />
+          <div className="flex items-center gap-2">
+            {gmailConnected && <DisconnectGmailButton />}
+            <SignOutButton />
+          </div>
         </div>
 
         <DashboardContent

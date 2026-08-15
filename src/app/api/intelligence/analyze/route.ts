@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { checkRateLimit } from "@/lib/rate-limit";
 import {
   extractPlainText,
   getHeader,
@@ -35,6 +36,17 @@ export async function POST() {
 
   if (!user) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  }
+
+  const rateLimit = await checkRateLimit(supabase, user.id, "intelligence/analyze", {
+    max: 5,
+    windowMinutes: 60,
+  });
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many analysis runs in a short window — wait a bit and try again." },
+      { status: 429, headers: { "Retry-After": String(rateLimit.retryAfterSeconds) } }
+    );
   }
 
   const { data: tokenRow } = await supabase
@@ -127,8 +139,9 @@ export async function POST() {
   try {
     accessToken = await refreshGoogleAccessToken(tokenRow.refresh_token);
   } catch (err) {
+    console.error("Google token refresh failed:", (err as Error).message);
     return NextResponse.json(
-      { error: `Could not refresh Google access token: ${(err as Error).message}` },
+      { error: "Could not refresh Google access — try reconnecting Gmail." },
       { status: 502 }
     );
   }

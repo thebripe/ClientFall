@@ -1,14 +1,19 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { extractPlainText, getThreadFull, refreshGoogleAccessToken } from "@/lib/google/gmail";
 import { draftFollowUp } from "@/lib/ai/draft-followup";
 import type { ClientIntelligenceExtraction, TopReasons } from "@/lib/types";
 
+const RequestSchema = z.object({ clientId: z.string().uuid() });
+
 export async function POST(request: Request) {
-  const { clientId } = (await request.json()) as { clientId?: string };
-  if (!clientId) {
-    return NextResponse.json({ error: "clientId is required" }, { status: 400 });
+  const parsedBody = RequestSchema.safeParse(await request.json().catch(() => null));
+  if (!parsedBody.success) {
+    return NextResponse.json({ error: "clientId is required and must be a valid id" }, { status: 400 });
   }
+  const { clientId } = parsedBody.data;
 
   const supabase = await createClient();
   const {
@@ -17,6 +22,17 @@ export async function POST(request: Request) {
 
   if (!user) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  }
+
+  const rateLimit = await checkRateLimit(supabase, user.id, "intelligence/draft", {
+    max: 15,
+    windowMinutes: 60,
+  });
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many drafts requested in a short window — wait a bit and try again." },
+      { status: 429, headers: { "Retry-After": String(rateLimit.retryAfterSeconds) } }
+    );
   }
 
   const { data: client } = await supabase
@@ -73,8 +89,9 @@ export async function POST(request: Request) {
   try {
     accessToken = await refreshGoogleAccessToken(tokenRow.refresh_token);
   } catch (err) {
+    console.error("Google token refresh failed:", (err as Error).message);
     return NextResponse.json(
-      { error: `Could not refresh Google access token: ${(err as Error).message}` },
+      { error: "Could not refresh Google access — try reconnecting Gmail." },
       { status: 502 }
     );
   }

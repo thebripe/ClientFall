@@ -80,10 +80,12 @@ visualization and the weekly digest cron.
    [`0002_clients_unique_domain.sql`](./supabase/migrations/0002_clients_unique_domain.sql) ->
    [`0003_thread_message_summary.sql`](./supabase/migrations/0003_thread_message_summary.sql) ->
    [`0004_users_last_synced_at.sql`](./supabase/migrations/0004_users_last_synced_at.sql) ->
-   [`0005_client_intelligence.sql`](./supabase/migrations/0005_client_intelligence.sql).
+   [`0005_client_intelligence.sql`](./supabase/migrations/0005_client_intelligence.sql) ->
+   [`0006_rate_limits.sql`](./supabase/migrations/0006_rate_limits.sql).
    This creates `users`, `google_tokens`, `clients`, `threads`,
-   `ai_extractions`, `scores_daily`, `client_intelligence`, with Row Level
-   Security so each user can only see their own data.
+   `ai_extractions`, `scores_daily`, `client_intelligence`,
+   `rate_limit_events`, with Row Level Security so each user can only see
+   their own data.
 
 ## 3. Fill in `.env.local`
 
@@ -220,6 +222,51 @@ If you land on `/auth/auth-code-error` instead, check:
   allowlist.
 - Your Google account is listed as a test user on the OAuth consent
   screen (required while the app is in "Testing" status).
+
+## Sharing this publicly
+
+Radar is hardened for public exposure (security headers, per-user rate
+limiting on the Gmail/Claude-calling routes, generic error responses, a
+privacy page, and an in-app "Disconnect Gmail" action), but there are two
+genuinely different ways to "make it public," and Google's rules force the
+split:
+
+**Send the `/demo` link to anyone.** `https://<your-domain>/demo` is a
+fully public, unauthenticated route with realistic hand-written sample
+data — no Gmail connection, no Google consent screen, no real API calls
+(Anthropic/Google/Supabase), zero cost, zero risk. This is the right link
+for a broad share or anyone who's just evaluating the idea.
+
+**Give a specific person the real app.** `gmail.readonly` is a Google
+*restricted scope*. Until you complete Google's app verification (weeks,
+plus a paid CASA security assessment for restricted scopes), your OAuth
+consent screen stays in **Testing** mode: only accounts you've manually
+added as test users (Google Cloud Console -> APIs & Services -> OAuth
+consent screen -> Test users, max 100) can complete sign-in — everyone
+else hits an "app hasn't been verified" block. So before sending the real
+`/` link to someone important, add their Google account as a test user
+first.
+
+### Deploying to Vercel
+
+1. `vercel` (or connect the repo at vercel.com) and deploy.
+2. In the Vercel project's Environment Variables settings, set every
+   variable from `.env.local.example` (`NEXT_PUBLIC_SUPABASE_URL`,
+   `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`,
+   `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`,
+   `ANTHROPIC_API_KEY`) — use fresh values, not anything that was ever
+   pasted into a chat or committed anywhere.
+3. Add your production domain to two places that still point at
+   `localhost` from local dev:
+   - **Supabase** -> Authentication -> URL Configuration: add
+     `https://<your-domain>/auth/callback` to Redirect URLs, and update
+     Site URL.
+   - **Google Cloud Console** -> your OAuth client: the Supabase callback
+     URL doesn't change (it's still `https://<project-ref>.supabase.co/auth/v1/callback`),
+     so nothing to add there for a Vercel deploy specifically.
+4. Add the important person's Google account under **Test users** on the
+   OAuth consent screen (step above) before sending them the link, or
+   they'll bounce off Google's verification wall.
 
 ## What's next (not built yet)
 

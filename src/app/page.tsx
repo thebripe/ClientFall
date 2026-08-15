@@ -23,11 +23,22 @@ export default async function LoginPage() {
           disappear — straight from your Gmail, read-only.
         </p>
       </div>
-      <ConnectGmailButton />
+      <div className="flex flex-col items-center gap-3">
+        <ConnectGmailButton />
+        <a
+          href="/demo"
+          className="text-sm text-slate-400 underline underline-offset-2 hover:text-slate-200"
+        >
+          Or view a live demo with sample data →
+        </a>
+      </div>
       <p className="max-w-xs text-xs text-slate-500">
         Radar only ever reads your Gmail. It never sends, drafts, or
         modifies anything.
       </p>
+      <a href="/privacy" className="text-xs text-slate-600 underline underline-offset-2 hover:text-slate-400">
+        Privacy
+      </a>
     </main>
   );
 }

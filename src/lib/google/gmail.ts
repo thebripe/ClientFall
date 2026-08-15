@@ -27,6 +27,20 @@ export async function refreshGoogleAccessToken(
   return data.access_token;
 }
 
+// Revokes a refresh token at Google so it can no longer be used to mint
+// new access tokens, even if a copy of it somehow lingered anywhere.
+// Best-effort: if Google's endpoint is unreachable or the token is
+// already invalid, the caller should still delete its local copy.
+export async function revokeGoogleToken(token: string): Promise<void> {
+  await fetch("https://oauth2.googleapis.com/revoke", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ token }),
+  }).catch((err) => {
+    console.error("Google token revocation request failed:", (err as Error).message);
+  });
+}
+
 type GmailHeader = { name: string; value: string };
 export type GmailMessage = {
   id: string;
