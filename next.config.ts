@@ -17,9 +17,17 @@ const connectSrc = ["'self'", supabaseUrl].filter(Boolean).join(" ");
 // app interpolates untrusted user data into a <script> tag, so the
 // residual inline-script-injection risk is low relative to shipping a
 // CSP that actually works.
+// Next's dev server (Fast Refresh / React DevTools hooks) uses eval() for
+// debugging and won't run at all without 'unsafe-eval'. Production builds
+// never call eval(), so this stays out of the CSP that real users get.
+const isDev = process.env.NODE_ENV === "development";
+const scriptSrc = ["'self'", "'unsafe-inline'", isDev && "'unsafe-eval'"]
+  .filter(Boolean)
+  .join(" ");
+
 const contentSecurityPolicy = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  `script-src ${scriptSrc}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data:",
   `connect-src ${connectSrc}`,
