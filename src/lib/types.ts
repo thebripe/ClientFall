@@ -27,6 +27,38 @@ export type ClientIntelligenceRow = {
   extraction_json: ClientIntelligenceExtraction;
 };
 
+export type ClientMemory = {
+  decision_maker: string | null;
+  budget: string | null;
+  current_software: string | null;
+  competitors_mentioned: string[];
+  pain_points: string[];
+  goals: string[];
+  communication_style: string | null;
+  important_dates_or_commitments: string[];
+  personal_notes: string[];
+};
+
+export type ClientMemoryRow = {
+  updated_at: string;
+  memory_json: ClientMemory;
+};
+
+export function isEmptyMemory(memory: ClientMemory | null | undefined): boolean {
+  if (!memory) return true;
+  return (
+    !memory.decision_maker &&
+    !memory.budget &&
+    !memory.current_software &&
+    !memory.communication_style &&
+    memory.competitors_mentioned.length === 0 &&
+    memory.pain_points.length === 0 &&
+    memory.goals.length === 0 &&
+    memory.important_dates_or_commitments.length === 0 &&
+    memory.personal_notes.length === 0
+  );
+}
+
 // Supabase/PostgREST embeds a to-one relation as an object when it detects
 // the unique constraint, but as a single-item array in some client/version
 // combinations — normalize defensively rather than assume one shape.

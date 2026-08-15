@@ -6,7 +6,7 @@ import { DraftFollowUp } from "@/components/draft-followup";
 import { RISK_META, formatMoney, relativeDays, riskTier } from "@/lib/ui/risk";
 import { relativeTime } from "@/lib/ui/time";
 import { parseAddress } from "@/lib/google/gmail";
-import type { ClientIntelligenceExtraction, TopReasons } from "@/lib/types";
+import { isEmptyMemory, type ClientIntelligenceExtraction, type ClientMemory, type TopReasons } from "@/lib/types";
 
 function IntelligenceList({ label, items }: { label: string; items?: string[] }) {
   if (!items || items.length === 0) return null;
@@ -20,6 +20,16 @@ function IntelligenceList({ label, items }: { label: string; items?: string[] })
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+function MemoryFact({ label, value }: { label: string; value: string | null }) {
+  if (!value) return null;
+  return (
+    <div>
+      <p className="text-xs font-medium text-slate-500">{label}</p>
+      <p className="text-sm text-slate-300">{value}</p>
     </div>
   );
 }
@@ -89,6 +99,12 @@ export default async function ClientDetailPage({
     .eq("client_id", id)
     .maybeSingle();
 
+  const { data: memoryRow } = await supabase
+    .from("client_memory")
+    .select("updated_at, memory_json")
+    .eq("client_id", id)
+    .maybeSingle();
+
   const topReasons = score?.top_reasons_json as TopReasons | null;
   const healthScore = score?.health_score ?? 0;
   const tier = riskTier(healthScore);
@@ -98,6 +114,7 @@ export default async function ClientDetailPage({
   const allThreads = (threads as ThreadRow[] | null) ?? [];
   const timelineItems = allThreads.slice(-8);
   const extraction = (intelligence?.extraction_json as ClientIntelligenceExtraction | null) ?? null;
+  const memory = (memoryRow?.memory_json as ClientMemory | null) ?? null;
 
   // Best-effort recipient for the "Open in email" link: the sender of the
   // most recent inbound message, since that's the client's own address.
@@ -288,6 +305,40 @@ export default async function ClientDetailPage({
                       </ul>
                     </div>
                   )}
+                </>
+              )}
+            </section>
+
+            <section className="animate-fade-in-up rounded-lg border border-slate-800 bg-slate-900/60 p-5">
+              <h2 className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">AI Memory</h2>
+              {isEmptyMemory(memory) ? (
+                <p className="text-sm text-slate-500">
+                  Nothing remembered yet — click <strong>Analyze conversations</strong> on the
+                  dashboard and Claude will start building a profile for this client (decision
+                  maker, budget, preferences, goals) from what actually comes up in your emails.
+                </p>
+              ) : (
+                <>
+                  <p className="mb-3 text-xs text-slate-600">
+                    Builds up automatically each time this client is analyzed — updated{" "}
+                    {relativeTime(memoryRow!.updated_at)}. Only facts stated in real conversations,
+                    never guessed.
+                  </p>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <MemoryFact label="Decision maker" value={memory!.decision_maker} />
+                    <MemoryFact label="Budget" value={memory!.budget} />
+                    <MemoryFact label="Current software" value={memory!.current_software} />
+                    <MemoryFact label="Communication style" value={memory!.communication_style} />
+                  </div>
+                  <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <IntelligenceList label="Goals" items={memory!.goals} />
+                    <IntelligenceList label="Pain points" items={memory!.pain_points} />
+                    <IntelligenceList label="Competitors mentioned" items={memory!.competitors_mentioned} />
+                    <IntelligenceList label="Dates & commitments" items={memory!.important_dates_or_commitments} />
+                  </div>
+                  <div className="mt-3">
+                    <IntelligenceList label="Other context" items={memory!.personal_notes} />
+                  </div>
                 </>
               )}
             </section>

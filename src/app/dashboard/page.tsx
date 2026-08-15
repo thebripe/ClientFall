@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { SignOutButton } from "@/components/sign-out-button";
@@ -85,6 +86,14 @@ export default async function DashboardPage() {
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold">Radar</h1>
           <div className="flex items-center gap-2">
+            {clientCount && clientCount > 0 ? (
+              <Link
+                href="/dashboard/chat"
+                className="rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800"
+              >
+                Ask Radar
+              </Link>
+            ) : null}
             {gmailConnected && <DisconnectGmailButton />}
             <SignOutButton />
           </div>

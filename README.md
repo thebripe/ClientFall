@@ -8,10 +8,14 @@ Google OAuth login, Gmail sync + client grouping, a deterministic
 attention-scoring engine, a premium-feeling dashboard (hero insights,
 tiered client cards, a per-client detail page with a relationship
 timeline), Claude-powered conversation intelligence (objections, buying
-signals, open questions, commitments — read on demand, not automatic),
-and AI-drafted follow-up emails (draft-only, nothing is ever sent for
-you) are all working end to end. Not built yet: the animated pulse-line
-visualization and the weekly digest cron.
+signals, open questions, commitments — read on demand, not automatic), a
+persistent AI Memory per client, AI-drafted follow-up emails (draft-only,
+nothing is ever sent for you), and an "Ask Radar" chat for plain-English
+questions across all your clients are all working end to end. Not built
+yet: the animated pulse-line visualization, the weekly digest cron, and
+anything requiring historical outcome data (revenue prediction, close
+probability, cross-business benchmarking) — see "What's next" below for
+why those are deliberately deferred.
 
 ## 1. Create a Google Cloud project + OAuth client
 
@@ -81,11 +85,12 @@ visualization and the weekly digest cron.
    [`0003_thread_message_summary.sql`](./supabase/migrations/0003_thread_message_summary.sql) ->
    [`0004_users_last_synced_at.sql`](./supabase/migrations/0004_users_last_synced_at.sql) ->
    [`0005_client_intelligence.sql`](./supabase/migrations/0005_client_intelligence.sql) ->
-   [`0006_rate_limits.sql`](./supabase/migrations/0006_rate_limits.sql).
+   [`0006_rate_limits.sql`](./supabase/migrations/0006_rate_limits.sql) ->
+   [`0007_client_memory.sql`](./supabase/migrations/0007_client_memory.sql).
    This creates `users`, `google_tokens`, `clients`, `threads`,
    `ai_extractions`, `scores_daily`, `client_intelligence`,
-   `rate_limit_events`, with Row Level Security so each user can only see
-   their own data.
+   `rate_limit_events`, `client_memory`, with Row Level Security so each
+   user can only see their own data.
 
 ## 3. Fill in `.env.local`
 
@@ -215,6 +220,33 @@ then **Copy** or **Open in email** (a `mailto:` link prefilled with your
 edits). There is no send button and no send pipeline in this app —
 Radar never sends email on your behalf.
 
+### AI Memory
+
+Each analysis run also updates a persistent, accumulating profile per
+client — decision maker, budget, current software, competitors, pain
+points, goals, communication style, and any dates or commitments that
+came up — stored in `client_memory`. Unlike Conversation Intelligence
+(which only reflects the threads read in the most recent run), memory
+carries forward: each run is asked to merge in what's new rather than
+replace the whole thing, so a fact doesn't disappear just because it
+wasn't repeated in the latest email. It's built from the same Claude
+call as Conversation Intelligence (same button, same cost, no extra API
+calls), and shown on the client detail page under **AI Memory**, with an
+empty state until a client's first analysis.
+
+### AI Chat ("Ask Radar")
+
+A chat page (`/dashboard/chat`) for asking plain-English questions about
+your clients — "which client should I prioritize," "who mentioned
+pricing," "which clients haven't heard from me in a while." Each request
+sends Claude a compact summary of every client's score, reasons,
+conversation intelligence, and memory, and asks it to answer using only
+that real data — it says so directly if the data doesn't support an
+answer, rather than guessing. Client names in the answer become clickable
+chips linking straight to that client's detail page. Rate-limited like
+the other Claude-calling routes (20 messages/hour) since it's a paid API
+call per message.
+
 If you land on `/auth/auth-code-error` instead, check:
 - The Supabase callback URL is added to the Google OAuth client's
   authorized redirect URIs.
@@ -279,6 +311,17 @@ first.
 - Out of scope for the MVP entirely: sending email on your behalf,
   scheduled/automatic AI analysis, invoicing, calendar integration,
   proposals, notes, multi-user/team features, ML-based scoring
+
+**Deliberately deferred, not forgotten** — revenue prediction, close
+probability, "deals likely to close this month," and cross-business
+benchmarking ("you follow up slower than similar businesses") all need
+real historical outcome data (won/lost deals) or a cross-tenant dataset
+that doesn't exist yet — this is currently a single-user app with no
+concept of a deal's outcome, only reply timing. Building these now would
+mean either fabricating numbers or a large benchmarking pipeline neither
+of which serves the product's core trust bet: every number shown is
+real, or it isn't shown. Once there's enough real usage history, these
+become honestly buildable — not before.
 
 ## Known warning
 

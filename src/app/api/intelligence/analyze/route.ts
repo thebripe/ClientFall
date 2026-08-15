@@ -9,7 +9,12 @@ import {
   parseAddress,
   refreshGoogleAccessToken,
 } from "@/lib/google/gmail";
-import { analyzeClientConversation, type ThreadForAnalysis } from "@/lib/ai/conversation-intelligence";
+import {
+  analyzeClientConversation,
+  EMPTY_CLIENT_MEMORY,
+  type ClientMemory,
+  type ThreadForAnalysis,
+} from "@/lib/ai/conversation-intelligence";
 
 // Priority clients only — same "needs attention" threshold used everywhere
 // else in the app. Analysis is relatively expensive (Claude Opus 5), so we
@@ -91,6 +96,17 @@ export async function POST() {
     (existingIntelligence ?? []).map((r) => [r.client_id, r.analyzed_through as string])
   );
 
+  const { data: existingMemoryRows } = await supabase
+    .from("client_memory")
+    .select("client_id, memory_json")
+    .in(
+      "client_id",
+      priorityClients.map((c) => c.id)
+    );
+  const memoryByClient = new Map(
+    (existingMemoryRows ?? []).map((r) => [r.client_id, r.memory_json as ClientMemory])
+  );
+
   const { data: threadRows } = await supabase
     .from("threads")
     .select("client_id, gmail_thread_id, last_message_at")
@@ -170,21 +186,32 @@ export async function POST() {
           }),
         }));
 
-      const result = await analyzeClientConversation(client.name, threadsForAnalysis);
+      const existingMemory = memoryByClient.get(client.id) ?? EMPTY_CLIENT_MEMORY;
+      const result = await analyzeClientConversation(client.name, threadsForAnalysis, existingMemory);
       if (!result) return;
 
-      await supabase.from("client_intelligence").upsert(
-        {
-          client_id: client.id,
-          analyzed_at: new Date().toISOString(),
-          analyzed_through: client.latestActivity,
-          model: "claude-opus-5",
-          summary: result.extraction.summary,
-          extraction_json: result.extraction,
-          raw_model_output_json: JSON.parse(JSON.stringify(result.raw)),
-        },
-        { onConflict: "client_id" }
-      );
+      await Promise.all([
+        supabase.from("client_intelligence").upsert(
+          {
+            client_id: client.id,
+            analyzed_at: new Date().toISOString(),
+            analyzed_through: client.latestActivity,
+            model: "claude-opus-5",
+            summary: result.extraction.summary,
+            extraction_json: result.extraction,
+            raw_model_output_json: JSON.parse(JSON.stringify(result.raw)),
+          },
+          { onConflict: "client_id" }
+        ),
+        supabase.from("client_memory").upsert(
+          {
+            client_id: client.id,
+            updated_at: new Date().toISOString(),
+            memory_json: result.memory,
+          },
+          { onConflict: "client_id" }
+        ),
+      ]);
 
       analyzed++;
     } catch (err) {

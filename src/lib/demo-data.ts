@@ -1,4 +1,4 @@
-import type { ClientIntelligenceExtraction, ScoreRow } from "@/lib/types";
+import type { ClientIntelligenceExtraction, ClientMemory, ScoreRow } from "@/lib/types";
 
 // Hand-written sample data for the public /demo route. None of this is
 // real — names, domains, and email addresses use *.example so nobody
@@ -16,6 +16,32 @@ type DemoFixture = {
   contactEmail: string;
   draft: DemoDraft;
   analyzedYet: boolean;
+  memory: ClientMemory | null;
+  memoryUpdatedAt: string | null;
+};
+
+const harborMemory: ClientMemory = {
+  decision_maker: "Priya (ops lead) — needs finance sign-off before contracts move",
+  budget: "Targeting ~$9k for phase one, pushed back on the $12k quote",
+  current_software: null,
+  competitors_mentioned: [],
+  pain_points: ["Internal review process is slow — 6 weeks feels aggressive to their team"],
+  goals: ["Get phase one approved and moving before their fiscal quarter closes"],
+  communication_style: "Replies same-day when engaged, prefers itemized breakdowns over prose",
+  important_dates_or_commitments: ["You committed to sending an itemized breakdown by Friday"],
+  personal_notes: [],
+};
+
+const bramMemory: ClientMemory = {
+  decision_maker: null,
+  budget: null,
+  current_software: null,
+  competitors_mentioned: [],
+  pain_points: [],
+  goals: ["Book a fall session, hasn't picked a date yet"],
+  communication_style: "Casual, enthusiastic tone",
+  important_dates_or_commitments: [],
+  personal_notes: ["Mentioned they loved the outdoor light in the last shoot"],
 };
 
 const harborIntelligence: ClientIntelligenceExtraction = {
@@ -76,6 +102,8 @@ export const DEMO_CLIENTS: DemoFixture[] = [
     },
     contactEmail: "priya@harborvale.example",
     analyzedYet: true,
+    memory: harborMemory,
+    memoryUpdatedAt: daysAgo(1),
     draft: {
       canDraft: true,
       subject: "Itemized breakdown for phase one",
@@ -114,6 +142,8 @@ export const DEMO_CLIENTS: DemoFixture[] = [
     },
     contactEmail: "hello@nomistudio.example",
     analyzedYet: true,
+    memory: null,
+    memoryUpdatedAt: null,
     draft: {
       canDraft: false,
       reason:
@@ -159,6 +189,8 @@ export const DEMO_CLIENTS: DemoFixture[] = [
     },
     contactEmail: "studio@bramphoto.example",
     analyzedYet: true,
+    memory: bramMemory,
+    memoryUpdatedAt: daysAgo(2),
     draft: {
       canDraft: true,
       subject: "October availability",
@@ -192,6 +224,8 @@ export const DEMO_CLIENTS: DemoFixture[] = [
     },
     contactEmail: "hi@kesslerdesign.example",
     analyzedYet: false,
+    memory: null,
+    memoryUpdatedAt: null,
     draft: { canDraft: false, reason: "Not analyzed yet in this demo." },
   },
 ];
@@ -204,3 +238,53 @@ export const DEMO_HEALTHY_COUNT = 3;
 export function getDemoFixture(id: string): DemoFixture | undefined {
   return DEMO_CLIENTS.find((c) => c.row.clients!.id === id);
 }
+
+export type DemoChatAnswer = {
+  answer: string;
+  referencedClientIds: string[];
+};
+
+// Canned Q&A for the public /demo chat — no live Claude call, since this
+// route is unauthenticated and would otherwise be an open door to run up
+// API costs. Free-text input that doesn't match falls back to a message
+// explaining that, same idea as the rest of /demo.
+export const DEMO_CHAT_QA: { prompt: string; response: DemoChatAnswer }[] = [
+  {
+    prompt: "Which client should I prioritize today?",
+    response: {
+      answer:
+        "Harbor & Vale Consulting — highest attention score (82) and it's real money: a $12,000 proposal that's gone quiet for 6 days after they asked a direct pricing question. They're waiting on the itemized breakdown you committed to sending.",
+      referencedClientIds: ["demo-harbor-vale"],
+    },
+  },
+  {
+    prompt: "Who mentioned pricing recently?",
+    response: {
+      answer:
+        "Harbor & Vale Consulting pushed back on the $12k quote, targeting closer to $9k for phase one. No one else has raised pricing in their recent threads.",
+      referencedClientIds: ["demo-harbor-vale"],
+    },
+  },
+  {
+    prompt: "Which clients haven't heard from me in a while?",
+    response: {
+      answer:
+        "Two: Bram Photography (11 days since last contact, they're open to booking another session) and Kessler Design Co (9 days, and hasn't been analyzed yet so there's less context on what's going on).",
+      referencedClientIds: ["demo-bram-photography", "demo-kessler-design"],
+    },
+  },
+  {
+    prompt: "Summarize what's going on with my highest-risk client.",
+    response: {
+      answer:
+        "Harbor & Vale is close to signing but stalled on the proposed timeline and hasn't confirmed budget sign-off from their finance lead, Priya. She needs an itemized cost breakdown to take to finance — that's the one thing standing between here and a closed $12k deal.",
+      referencedClientIds: ["demo-harbor-vale"],
+    },
+  },
+];
+
+export const DEMO_CHAT_FALLBACK: DemoChatAnswer = {
+  answer:
+    "This demo only answers the sample questions below with pre-written responses — no live API call is made here. Connect your own Gmail to ask real questions about your real clients.",
+  referencedClientIds: [],
+};

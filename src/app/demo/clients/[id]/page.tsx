@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getDemoFixture } from "@/lib/demo-data";
 import { DemoDraftFollowUp } from "@/components/demo-draft-followup";
 import { RISK_META, formatMoney, relativeDays, riskTier } from "@/lib/ui/risk";
+import { isEmptyMemory } from "@/lib/types";
 
 function IntelligenceList({ label, items }: { label: string; items?: string[] }) {
   if (!items || items.length === 0) return null;
@@ -20,6 +21,16 @@ function IntelligenceList({ label, items }: { label: string; items?: string[] })
   );
 }
 
+function MemoryFact({ label, value }: { label: string; value: string | null }) {
+  if (!value) return null;
+  return (
+    <div>
+      <p className="text-xs font-medium text-slate-500">{label}</p>
+      <p className="text-sm text-slate-300">{value}</p>
+    </div>
+  );
+}
+
 export default async function DemoClientDetailPage({
   params,
 }: {
@@ -29,7 +40,7 @@ export default async function DemoClientDetailPage({
   const fixture = getDemoFixture(id);
   if (!fixture) notFound();
 
-  const { row, contactEmail, draft, analyzedYet } = fixture;
+  const { row, contactEmail, draft, analyzedYet, memory, memoryUpdatedAt } = fixture;
   const client = row.clients!;
   const tier = riskTier(row.health_score);
   const meta = RISK_META[tier];
@@ -127,6 +138,39 @@ export default async function DemoClientDetailPage({
                   </ul>
                 </div>
               )}
+            </>
+          )}
+        </section>
+
+        <section className="animate-fade-in-up rounded-lg border border-slate-800 bg-slate-900/60 p-5">
+          <h2 className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">AI Memory</h2>
+          {isEmptyMemory(memory) ? (
+            <p className="text-sm text-slate-500">
+              Nothing remembered yet — analysis builds this up automatically from real
+              conversations (decision maker, budget, preferences, goals).
+            </p>
+          ) : (
+            <>
+              <p className="mb-3 text-xs text-slate-600">
+                Builds up automatically each time this client is analyzed
+                {memoryUpdatedAt ? ` — updated ${relativeDays(memoryUpdatedAt)}` : ""}. Only facts
+                stated in real conversations, never guessed.
+              </p>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <MemoryFact label="Decision maker" value={memory!.decision_maker} />
+                <MemoryFact label="Budget" value={memory!.budget} />
+                <MemoryFact label="Current software" value={memory!.current_software} />
+                <MemoryFact label="Communication style" value={memory!.communication_style} />
+              </div>
+              <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <IntelligenceList label="Goals" items={memory!.goals} />
+                <IntelligenceList label="Pain points" items={memory!.pain_points} />
+                <IntelligenceList label="Competitors mentioned" items={memory!.competitors_mentioned} />
+                <IntelligenceList label="Dates & commitments" items={memory!.important_dates_or_commitments} />
+              </div>
+              <div className="mt-3">
+                <IntelligenceList label="Other context" items={memory!.personal_notes} />
+              </div>
             </>
           )}
         </section>
