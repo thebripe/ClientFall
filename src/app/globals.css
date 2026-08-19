@@ -1,34 +1,135 @@
 @import "tailwindcss";
 
+/* ---------------------------------------------------------------------
+   Radar design tokens.
+
+   The app is dark-only by design (every screen is an "ink" surface), so
+   the palette is defined once on :root rather than behind a dark-mode
+   media query — a light theme would need its own design pass, and the
+   previous unused light/dark scaffold only ever produced drift.
+
+   Palette: warm-neutral near-black base + warm sand accent. Chroma is
+   deliberately reserved: red / amber / sage appear ONLY to signal
+   urgency, never for decoration, so color always carries meaning.
+   --------------------------------------------------------------------- */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #09090a;
+  --foreground: #faf7f2;
+
+  /* Card / elevated surfaces */
+  --card: #111012;
+  --card-foreground: #faf7f2;
+  --popover: #17161a;
+  --popover-foreground: #faf7f2;
+  --raised: #17161a;
+
+  /* Warm sand — the single accent, used for primary actions only */
+  --primary: #e9e0d1;
+  --primary-foreground: #14120e;
+
+  --secondary: #1c1b1f;
+  --secondary-foreground: #ebe6de;
+
+  --muted: #1c1b1f;
+  --muted-foreground: #a39d94;
+  --subtle-foreground: #6f6a63;
+
+  --accent: #1c1b1f;
+  --accent-foreground: #faf7f2;
+
+  --border: #242327;
+  --border-strong: #333137;
+  --input: #242327;
+  --ring: #57534d;
+
+  /* Urgency scale — desaturated, earthy. The only color in the UI. */
+  --urgent: #e08b7f;
+  --urgent-surface: rgba(224, 139, 127, 0.1);
+  --urgent-border: rgba(224, 139, 127, 0.22);
+
+  --attention: #dcae72;
+  --attention-surface: rgba(220, 174, 114, 0.1);
+  --attention-border: rgba(220, 174, 114, 0.22);
+
+  --healthy: #89b396;
+  --healthy-surface: rgba(137, 179, 150, 0.1);
+  --healthy-border: rgba(137, 179, 150, 0.22);
+
+  --destructive: #e08b7f;
+
+  --radius: 0.875rem;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-raised: var(--raised);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-subtle-foreground: var(--subtle-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-destructive: var(--destructive);
+
+  --color-urgent: var(--urgent);
+  --color-urgent-surface: var(--urgent-surface);
+  --color-urgent-border: var(--urgent-border);
+  --color-attention: var(--attention);
+  --color-attention-surface: var(--attention-surface);
+  --color-attention-border: var(--attention-border);
+  --color-healthy: var(--healthy);
+  --color-healthy-surface: var(--healthy-surface);
+  --color-healthy-border: var(--healthy-border);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 10px);
+
+  /* Geist is loaded in layout.tsx via next/font. Previously body set
+     Arial here and silently overrode it — the whole app rendered in
+     Arial despite loading Geist. */
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  border-color: var(--border);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
+
+/* Tabular figures everywhere a number is meant to be read as a metric,
+   so counts don't jitter as they animate. */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------- motion ------------------------------- */
 
 @keyframes fade-in-up {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
@@ -37,32 +138,93 @@ body {
 }
 
 .animate-fade-in-up {
-  animation: fade-in-up 0.4s ease-out both;
+  animation: fade-in-up 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.5s ease-out both;
 }
 
 @keyframes shimmer {
   from {
-    background-position: -400px 0;
+    background-position: -500px 0;
   }
   to {
-    background-position: 400px 0;
+    background-position: 500px 0;
   }
 }
 
 .animate-shimmer {
   background-image: linear-gradient(
     90deg,
-    rgba(148, 163, 184, 0.06) 0%,
-    rgba(148, 163, 184, 0.15) 50%,
-    rgba(148, 163, 184, 0.06) 100%
+    rgba(163, 157, 148, 0.05) 0%,
+    rgba(163, 157, 148, 0.13) 50%,
+    rgba(163, 157, 148, 0.05) 100%
   );
-  background-size: 800px 100%;
-  animation: shimmer 1.6s ease-in-out infinite;
+  background-size: 1000px 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 1.8s ease-in-out infinite;
+}
+
+/* Soft ambient glow behind hero surfaces — adds depth without a border. */
+.surface-glow {
+  position: relative;
+  isolation: isolate;
+}
+
+.surface-glow::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    160deg,
+    rgba(250, 247, 242, 0.09),
+    rgba(250, 247, 242, 0) 45%
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: -1;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-in-up,
-  .animate-shimmer {
+  .animate-fade-in,
+  .animate-shimmer,
+  .animate-pulse-soft {
     animation: none;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
   }
 }

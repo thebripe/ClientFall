@@ -1,9 +1,34 @@
 "use client";
 
 import { CountUp } from "@/components/count-up";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { formatMoney } from "@/lib/ui/risk";
 import { relativeTime, timeOfDayGreeting } from "@/lib/ui/time";
 import type { ScoreRow } from "@/lib/types";
+
+function Stat({
+  value,
+  label,
+  tone = "default",
+}: {
+  value: React.ReactNode;
+  label: string;
+  tone?: "default" | "urgent";
+}) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <p
+        className={`text-2xl font-semibold tabular-nums tracking-tight sm:text-3xl ${
+          tone === "urgent" ? "text-urgent" : "text-foreground"
+        }`}
+      >
+        {value}
+      </p>
+      <p className="text-xs text-subtle-foreground">{label}</p>
+    </div>
+  );
+}
 
 export function MorningBriefing({
   firstName,
@@ -34,19 +59,25 @@ export function MorningBriefing({
   const greeting = `${timeOfDayGreeting()}${firstName ? `, ${firstName}` : ""}.`;
 
   return (
-    <div className="animate-fade-in-up relative overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900 to-slate-950 p-7">
-      <h2 className="text-2xl font-medium text-slate-100" suppressHydrationWarning>
+    <section className="animate-fade-in-up surface-glow relative overflow-hidden rounded-2xl border border-border bg-gradient-to-b from-card to-background p-6 shadow-[0_1px_2px_rgba(0,0,0,0.4),0_24px_48px_-24px_rgba(0,0,0,0.9)] sm:p-8">
+      <h2
+        className="text-2xl font-semibold tracking-tight text-foreground sm:text-[1.75rem]"
+        suppressHydrationWarning
+      >
         {greeting}
       </h2>
 
       {lastSyncedAt ? (
-        <p className="mt-1 text-sm text-slate-500" suppressHydrationWarning>
+        <p
+          className="mt-2 max-w-prose text-sm leading-relaxed text-muted-foreground"
+          suppressHydrationWarning
+        >
           Reviewed {reviewedClientCount} client relationship{reviewedClientCount === 1 ? "" : "s"}{" "}
-          across {reviewedThreadCount} conversation{reviewedThreadCount === 1 ? "" : "s"} since
-          your last sync ({relativeTime(lastSyncedAt)}).
+          across {reviewedThreadCount} conversation{reviewedThreadCount === 1 ? "" : "s"} since your
+          last sync ({relativeTime(lastSyncedAt)}).
         </p>
       ) : (
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-2 max-w-prose text-sm leading-relaxed text-muted-foreground">
           {clientCount > 0
             ? "You've synced before — run it again to bring this up to date."
             : "We only surface real back-and-forth correspondence — newsletters and automated mail are filtered out automatically."}
@@ -56,32 +87,38 @@ export function MorningBriefing({
       <div className="mt-6">
         {ranked.length === 0 ? (
           gmailConnected && (
-            <button
-              onClick={onSync}
-              disabled={syncing}
-              className="w-fit rounded-md bg-slate-100 px-4 py-2 text-sm font-medium text-slate-900 transition hover:bg-white disabled:opacity-60"
-            >
+            <Button onClick={onSync} disabled={syncing} size="lg">
               {syncing ? "Syncing…" : "Sync Gmail"}
-            </button>
+            </Button>
           )
         ) : needsAttention.length === 0 ? (
-          <p className="text-lg font-medium text-emerald-300">
-            ✓ You&apos;re all caught up — every relationship looks healthy.
-          </p>
+          <div className="flex items-center gap-2.5 rounded-xl border border-healthy-border bg-healthy-surface px-4 py-3.5">
+            <span aria-hidden className="size-1.5 rounded-full bg-healthy" />
+            <p className="text-sm font-medium text-healthy">
+              You&apos;re all caught up — every relationship looks healthy.
+            </p>
+          </div>
         ) : (
           top && (
-            <div className="rounded-xl border border-slate-800 bg-black/20 p-5">
-              <p className="text-xs uppercase tracking-wide text-slate-500">Most urgent</p>
-              <p className="mt-1 text-lg font-semibold text-slate-100">{top.clients!.name}</p>
-              <p className="mt-1 text-sm text-slate-400">{top.top_reasons_json?.reasons?.[0]}</p>
-              {top.top_reasons_json?.actionLabel && (
-                <span className="mt-3 inline-block rounded-full bg-red-400/10 px-3 py-1 text-sm font-medium text-red-300">
-                  {top.top_reasons_json.actionLabel}
-                </span>
-              )}
+            <div className="rounded-xl border border-border bg-background/60 p-5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-[0.6875rem] font-medium uppercase tracking-[0.08em] text-subtle-foreground">
+                  Most urgent
+                </p>
+                {top.top_reasons_json?.actionLabel && (
+                  <Badge variant="urgent">{top.top_reasons_json.actionLabel}</Badge>
+                )}
+              </div>
+              <p className="mt-2 text-lg font-semibold tracking-tight text-foreground">
+                {top.clients!.name}
+              </p>
+              <p className="mt-1 max-w-prose text-sm leading-relaxed text-muted-foreground">
+                {top.top_reasons_json?.reasons?.[0]}
+              </p>
               {top.dollar_at_risk ? (
-                <p className="mt-2 text-xs text-slate-500">
-                  {formatMoney(top.dollar_at_risk)} at risk on this one
+                <p className="mt-3 text-xs text-subtle-foreground">
+                  <span className="text-urgent">{formatMoney(top.dollar_at_risk)}</span> at risk on
+                  this one
                 </p>
               ) : null}
             </div>
@@ -90,29 +127,18 @@ export function MorningBriefing({
       </div>
 
       {ranked.length > 0 && needsAttention.length > 0 && (
-        <div className="mt-5 flex gap-6">
-          <div>
-            <p className="text-2xl font-semibold tabular-nums">
-              <CountUp value={highPriority.length} />
-            </p>
-            <p className="text-xs text-slate-500">high priority</p>
-          </div>
-          <div>
-            <p className="text-2xl font-semibold tabular-nums">
-              <CountUp value={needsAttention.length} />
-            </p>
-            <p className="text-xs text-slate-500">recommended actions</p>
-          </div>
+        <div className="mt-6 flex flex-wrap gap-x-10 gap-y-4 border-t border-border pt-5">
+          <Stat value={<CountUp value={highPriority.length} />} label="high priority" />
+          <Stat value={<CountUp value={needsAttention.length} />} label="recommended actions" />
           {totalAtRisk > 0 && (
-            <div>
-              <p className="text-2xl font-semibold tabular-nums text-red-300">
-                <CountUp value={totalAtRisk} formatter={formatMoney} />
-              </p>
-              <p className="text-xs text-slate-500">at risk right now</p>
-            </div>
+            <Stat
+              tone="urgent"
+              value={<CountUp value={totalAtRisk} formatter={formatMoney} />}
+              label="at risk right now"
+            />
           )}
         </div>
       )}
-    </div>
+    </section>
   );
 }

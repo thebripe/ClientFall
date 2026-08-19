@@ -2,6 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getDemoFixture } from "@/lib/demo-data";
 import { DemoDraftFollowUp } from "@/components/demo-draft-followup";
+import { DemoNotice, PageHeader, PageShell } from "@/components/page-shell";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardEyebrow } from "@/components/ui/card";
 import { RISK_META, formatMoney, relativeDays, riskTier } from "@/lib/ui/risk";
 import { isEmptyMemory } from "@/lib/types";
 
@@ -9,11 +13,14 @@ function IntelligenceList({ label, items }: { label: string; items?: string[] })
   if (!items || items.length === 0) return null;
   return (
     <div>
-      <p className="mb-1 text-xs font-medium text-slate-500">{label}</p>
-      <ul className="flex flex-col gap-1">
+      <p className="mb-1.5 text-xs font-medium text-subtle-foreground">{label}</p>
+      <ul className="flex flex-col gap-1.5">
         {items.map((item) => (
-          <li key={item} className="text-sm text-slate-300">
-            • {item}
+          <li key={item} className="flex gap-2 text-sm leading-relaxed text-muted-foreground">
+            <span aria-hidden className="text-subtle-foreground">
+              •
+            </span>
+            <span className="min-w-0">{item}</span>
           </li>
         ))}
       </ul>
@@ -25,8 +32,8 @@ function MemoryFact({ label, value }: { label: string; value: string | null }) {
   if (!value) return null;
   return (
     <div>
-      <p className="text-xs font-medium text-slate-500">{label}</p>
-      <p className="text-sm text-slate-300">{value}</p>
+      <p className="text-xs font-medium text-subtle-foreground">{label}</p>
+      <p className="mt-0.5 text-sm leading-relaxed text-muted-foreground">{value}</p>
     </div>
   );
 }
@@ -51,134 +58,184 @@ export default async function DemoClientDetailPage({
   const extraction = intelligence?.extraction_json ?? null;
 
   return (
-    <main className="min-h-screen bg-[#0a0e17] px-6 py-10 text-slate-100">
-      <div className="mx-auto flex max-w-2xl flex-col gap-6">
-        <div className="flex items-center justify-between">
-          <Link href="/demo" className="text-sm text-slate-400 hover:text-slate-200">
-            ← Back to demo dashboard
-          </Link>
-          <Link href="/" className="rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800">
-            Connect Gmail
-          </Link>
+    <PageShell>
+      <PageHeader backHref="/demo" backLabel="Demo dashboard">
+        <Button asChild variant="outline">
+          <Link href="/">Connect Gmail</Link>
+        </Button>
+      </PageHeader>
+
+      <DemoNotice>Sample data — this client isn&apos;t real.</DemoNotice>
+
+      <section className="animate-fade-in-up surface-glow relative overflow-hidden rounded-2xl border border-border bg-gradient-to-b from-card to-background p-6 shadow-[0_1px_2px_rgba(0,0,0,0.4),0_24px_48px_-24px_rgba(0,0,0,0.9)] sm:p-8">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+              {client.name}
+            </h1>
+            <p className="mt-0.5 text-sm text-subtle-foreground">{client.email_domain}</p>
+          </div>
+          <Badge variant={meta.badge}>{meta.label}</Badge>
         </div>
 
-        <div className="animate-fade-in-up rounded-lg border border-amber-900/40 bg-amber-400/5 px-4 py-3 text-sm text-amber-200">
-          Sample data — this client isn&apos;t real.
-        </div>
-
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-100">{client.name}</h1>
-          <p className="text-sm text-slate-500">{client.email_domain}</p>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <section className="rounded-lg border border-slate-800 bg-slate-900/60 p-5">
-            <h2 className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">Relationship health</h2>
-            <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${meta.badgeBg} ${meta.text}`}>
-              {meta.emoji} {meta.label}
-            </span>
-            <p className="mt-2 text-sm text-slate-400">Last contact: {relativeDays(lastContactAt)}</p>
-            {row.dollar_at_risk ? (
-              <p className="mt-1 text-sm text-red-300">{formatMoney(row.dollar_at_risk)} at risk</p>
-            ) : null}
-          </section>
-
-          <section className="rounded-lg border border-slate-800 bg-slate-900/60 p-5">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xs font-medium uppercase tracking-wide text-slate-500">Suggested next action</h2>
-              {row.top_reasons_json?.confidence && (
-                <span className="text-xs text-slate-500">
-                  Confidence: <span className="text-slate-300">{row.top_reasons_json.confidence}</span>
-                </span>
-              )}
+        <div className="mt-6 flex flex-wrap items-end gap-x-10 gap-y-4">
+          <div>
+            <p className="text-3xl font-semibold tabular-nums tracking-tight text-foreground">
+              {row.health_score}
+            </p>
+            <p className="mt-0.5 text-xs text-subtle-foreground">attention score</p>
+          </div>
+          {row.dollar_at_risk ? (
+            <div>
+              <p className="text-3xl font-semibold tabular-nums tracking-tight text-urgent">
+                {formatMoney(row.dollar_at_risk)}
+              </p>
+              <p className="mt-0.5 text-xs text-subtle-foreground">at risk</p>
             </div>
-            <p className="mt-1 text-xs text-slate-600">
+          ) : null}
+          <div>
+            <p className="text-sm text-muted-foreground">{relativeDays(lastContactAt)}</p>
+            <p className="mt-0.5 text-xs text-subtle-foreground">last contact</p>
+          </div>
+        </div>
+      </section>
+
+      <Card className="animate-fade-in-up relative overflow-hidden">
+        {/* Same urgency spine motif as the dashboard cards. */}
+        <span aria-hidden className={`absolute inset-y-0 left-0 w-0.5 ${meta.dot}`} />
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="min-w-0">
+            <CardEyebrow>Suggested next action</CardEyebrow>
+            <p className="mt-1 text-xs text-subtle-foreground">
               Calculated from reply timing, volume, and thread activity — not AI.
             </p>
-            <p className={`mt-2 text-sm font-medium ${meta.text}`}>{row.top_reasons_json?.suggestedAction}</p>
-          </section>
+          </div>
+          {row.top_reasons_json?.confidence && (
+            <Badge variant="outline">{row.top_reasons_json.confidence} confidence</Badge>
+          )}
+        </div>
+        <p className={`text-sm font-medium leading-relaxed ${meta.text}`}>
+          {row.top_reasons_json?.suggestedAction}
+        </p>
+        {row.top_reasons_json?.reasons?.length ? (
+          <div className="border-t border-border pt-3">
+            <p className="mb-1.5 text-xs font-medium text-subtle-foreground">Why</p>
+            <ul className="flex flex-col gap-1">
+              {row.top_reasons_json.reasons.map((reason) => (
+                <li key={reason} className="text-xs leading-relaxed text-subtle-foreground">
+                  • {reason}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+      </Card>
+
+      <Card className="animate-fade-in-up">
+        <div>
+          <CardEyebrow>Conversation intelligence</CardEyebrow>
+          {extraction && (
+            <p className="mt-1.5 text-xs leading-relaxed text-subtle-foreground">
+              AI-generated by Claude, based on this client&apos;s recent conversations.
+            </p>
+          )}
         </div>
 
-        <section className="animate-fade-in-up rounded-lg border border-slate-800 bg-slate-900/60 p-5">
-          <h2 className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">Conversation intelligence</h2>
-          {!extraction ? (
-            <p className="text-sm text-slate-500">
-              Not analyzed yet — click <strong>Analyze conversations</strong> on the{" "}
-              <Link href="/demo" className="underline underline-offset-2">
-                demo dashboard
-              </Link>{" "}
-              to have Claude read this relationship&apos;s recent emails for objections, buying
-              signals, and open questions.
+        {!extraction ? (
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            Not analyzed yet — click{" "}
+            <strong className="font-medium text-foreground">Analyze conversations</strong> on the{" "}
+            <Link href="/demo" className="underline underline-offset-4">
+              demo dashboard
+            </Link>{" "}
+            to have Claude read this relationship&apos;s recent emails for objections, buying
+            signals, and open questions.
+          </p>
+        ) : (
+          <>
+            {intelligence?.summary && (
+              <p className="text-sm leading-relaxed text-foreground">{intelligence.summary}</p>
+            )}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <IntelligenceList label="Open questions" items={extraction.open_questions} />
+              <IntelligenceList label="Objections" items={extraction.objections} />
+              <IntelligenceList label="Buying signals" items={extraction.buying_signals} />
+              <IntelligenceList label="Hesitation signals" items={extraction.hesitation_signals} />
+              <IntelligenceList label="Pricing mentions" items={extraction.pricing_mentions} />
+              <IntelligenceList
+                label="Competitor mentions"
+                items={extraction.competitor_mentions}
+              />
+            </div>
+            {extraction.commitments.length > 0 && (
+              <div className="border-t border-border pt-4">
+                <p className="mb-1.5 text-xs font-medium text-subtle-foreground">Commitments</p>
+                <ul className="flex flex-col gap-1.5">
+                  {extraction.commitments.map((c, i) => (
+                    <li key={i} className="text-sm leading-relaxed text-muted-foreground">
+                      {c.by === "user" ? "You" : "They"} said: &ldquo;{c.text}&rdquo;
+                      {c.fulfilled === false && (
+                        <span className="ml-1 text-attention">— not yet fulfilled</span>
+                      )}
+                      {c.fulfilled === true && (
+                        <span className="ml-1 text-healthy">— fulfilled</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </>
+        )}
+      </Card>
+
+      <Card className="animate-fade-in-up">
+        <div>
+          <CardEyebrow>AI Memory</CardEyebrow>
+          {!isEmptyMemory(memory) && (
+            <p className="mt-1.5 text-xs leading-relaxed text-subtle-foreground">
+              Builds up automatically each time this client is analyzed
+              {memoryUpdatedAt ? ` — updated ${relativeDays(memoryUpdatedAt)}` : ""}. Only facts
+              stated in real conversations, never guessed.
             </p>
-          ) : (
-            <>
-              <p className="mb-3 text-xs text-slate-600">
-                AI-generated by Claude, based on this client&apos;s recent conversations.
-              </p>
-              {intelligence?.summary && <p className="mb-3 text-sm text-slate-300">{intelligence.summary}</p>}
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <IntelligenceList label="Open questions" items={extraction.open_questions} />
-                <IntelligenceList label="Objections" items={extraction.objections} />
-                <IntelligenceList label="Buying signals" items={extraction.buying_signals} />
-                <IntelligenceList label="Hesitation signals" items={extraction.hesitation_signals} />
-                <IntelligenceList label="Pricing mentions" items={extraction.pricing_mentions} />
-                <IntelligenceList label="Competitor mentions" items={extraction.competitor_mentions} />
-              </div>
-              {extraction.commitments.length > 0 && (
-                <div className="mt-3">
-                  <p className="mb-1 text-xs font-medium text-slate-500">Commitments</p>
-                  <ul className="flex flex-col gap-1">
-                    {extraction.commitments.map((c, i) => (
-                      <li key={i} className="text-sm text-slate-300">
-                        {c.by === "user" ? "You" : "They"} said: &ldquo;{c.text}&rdquo;
-                        {c.fulfilled === false && <span className="ml-1 text-amber-400">— not yet fulfilled</span>}
-                        {c.fulfilled === true && <span className="ml-1 text-emerald-400">— fulfilled</span>}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </>
           )}
-        </section>
+        </div>
 
-        <section className="animate-fade-in-up rounded-lg border border-slate-800 bg-slate-900/60 p-5">
-          <h2 className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">AI Memory</h2>
-          {isEmptyMemory(memory) ? (
-            <p className="text-sm text-slate-500">
-              Nothing remembered yet — analysis builds this up automatically from real
-              conversations (decision maker, budget, preferences, goals).
-            </p>
-          ) : (
-            <>
-              <p className="mb-3 text-xs text-slate-600">
-                Builds up automatically each time this client is analyzed
-                {memoryUpdatedAt ? ` — updated ${relativeDays(memoryUpdatedAt)}` : ""}. Only facts
-                stated in real conversations, never guessed.
-              </p>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <MemoryFact label="Decision maker" value={memory!.decision_maker} />
-                <MemoryFact label="Budget" value={memory!.budget} />
-                <MemoryFact label="Current software" value={memory!.current_software} />
-                <MemoryFact label="Communication style" value={memory!.communication_style} />
-              </div>
-              <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <IntelligenceList label="Goals" items={memory!.goals} />
-                <IntelligenceList label="Pain points" items={memory!.pain_points} />
-                <IntelligenceList label="Competitors mentioned" items={memory!.competitors_mentioned} />
-                <IntelligenceList label="Dates & commitments" items={memory!.important_dates_or_commitments} />
-              </div>
-              <div className="mt-3">
-                <IntelligenceList label="Other context" items={memory!.personal_notes} />
-              </div>
-            </>
-          )}
-        </section>
+        {isEmptyMemory(memory) ? (
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            Nothing remembered yet — analysis builds this up automatically from real conversations
+            (decision maker, budget, preferences, goals).
+          </p>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <MemoryFact label="Decision maker" value={memory!.decision_maker} />
+              <MemoryFact label="Budget" value={memory!.budget} />
+              <MemoryFact label="Current software" value={memory!.current_software} />
+              <MemoryFact label="Communication style" value={memory!.communication_style} />
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <IntelligenceList label="Goals" items={memory!.goals} />
+              <IntelligenceList label="Pain points" items={memory!.pain_points} />
+              <IntelligenceList
+                label="Competitors mentioned"
+                items={memory!.competitors_mentioned}
+              />
+              <IntelligenceList
+                label="Dates & commitments"
+                items={memory!.important_dates_or_commitments}
+              />
+            </div>
+            <IntelligenceList label="Other context" items={memory!.personal_notes} />
+          </>
+        )}
+      </Card>
 
-        <DemoDraftFollowUp draft={analyzedYet ? draft : { canDraft: false, reason: "Not analyzed yet in this demo." }} />
+      <DemoDraftFollowUp
+        draft={analyzedYet ? draft : { canDraft: false, reason: "Not analyzed yet in this demo." }}
+      />
 
-        <p className="text-xs text-slate-600">Contact on file: {contactEmail}</p>
-      </div>
-    </main>
+      <p className="text-xs text-subtle-foreground">Contact on file: {contactEmail}</p>
+    </PageShell>
   );
 }

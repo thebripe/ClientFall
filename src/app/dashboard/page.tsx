@@ -4,6 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { SignOutButton } from "@/components/sign-out-button";
 import { DisconnectGmailButton } from "@/components/disconnect-gmail-button";
 import { DashboardContent } from "@/components/dashboard-content";
+import { PageHeader, PageShell } from "@/components/page-shell";
+import { Button } from "@/components/ui/button";
 import { firstIntelligence, type ScoreRow } from "@/lib/types";
 
 const PRIORITY_THRESHOLD = 30;
@@ -81,43 +83,35 @@ export default async function DashboardPage() {
   }).length;
 
   return (
-    <main className="min-h-screen bg-[#0a0e17] px-6 py-10 text-slate-100">
-      <div className="mx-auto flex max-w-2xl flex-col gap-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold">Radar</h1>
-          <div className="flex items-center gap-2">
-            {clientCount && clientCount > 0 ? (
-              <Link
-                href="/dashboard/chat"
-                className="rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800"
-              >
-                Ask Radar
-              </Link>
-            ) : null}
-            {gmailConnected && <DisconnectGmailButton />}
-            <SignOutButton />
-          </div>
-        </div>
+    <PageShell>
+      <PageHeader title="Radar">
+        {clientCount && clientCount > 0 ? (
+          <Button asChild variant="outline">
+            <Link href="/dashboard/chat">Ask Radar</Link>
+          </Button>
+        ) : null}
+        {gmailConnected && <DisconnectGmailButton />}
+        <SignOutButton />
+      </PageHeader>
 
-        <DashboardContent
-          userEmail={user.email!}
-          firstName={firstName}
-          gmailConnected={gmailConnected}
-          clientCount={clientCount ?? 0}
-          ranked={ranked}
-          lastSyncedAt={profileRow?.last_synced_at ?? null}
-          reviewedClientCount={reviewedClientCount}
-          reviewedThreadCount={reviewedThreadCount}
-          readyToAnalyzeCount={readyToAnalyzeCount}
-        />
+      <DashboardContent
+        userEmail={user.email!}
+        firstName={firstName}
+        gmailConnected={gmailConnected}
+        clientCount={clientCount ?? 0}
+        ranked={ranked}
+        lastSyncedAt={profileRow?.last_synced_at ?? null}
+        reviewedClientCount={reviewedClientCount}
+        reviewedThreadCount={reviewedThreadCount}
+        readyToAnalyzeCount={readyToAnalyzeCount}
+      />
 
-        <div className="rounded-lg border border-dashed border-slate-800 p-6 text-sm text-slate-500">
-          Coming next: the animated pulse-line visualization and a weekly digest
-          email. Not in this MVP: sending email on your behalf, automatic or
-          scheduled analysis (you choose when Claude runs), invoicing, calendar
-          integration, proposals, notes, multi-user teams, or ML-based scoring.
-        </div>
-      </div>
-    </main>
+      <p className="rounded-xl border border-dashed border-border p-5 text-xs leading-relaxed text-subtle-foreground">
+        Coming next: the animated pulse-line visualization and a weekly digest email. Not in this
+        MVP: sending email on your behalf, automatic or scheduled analysis (you choose when Claude
+        runs), invoicing, calendar integration, proposals, notes, multi-user teams, or ML-based
+        scoring.
+      </p>
+    </PageShell>
   );
 }

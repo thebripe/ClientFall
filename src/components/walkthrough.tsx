@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 
 const STORAGE_KEY = "radar_walkthrough_seen";
 
@@ -47,24 +48,41 @@ export function Walkthrough() {
   const isLast = step === STEPS.length - 1;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="animate-fade-in-up w-full max-w-sm rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl">
-        <p className="text-xs text-slate-500">
-          {step + 1} of {STEPS.length}
-        </p>
-        <h2 className="mt-2 text-lg font-semibold text-slate-100">{current.title}</h2>
-        <p className="mt-2 text-sm text-slate-400">{current.body}</p>
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="walkthrough-title"
+      className="animate-fade-in fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+    >
+      <div className="animate-fade-in-up w-full max-w-sm rounded-2xl border border-border bg-popover p-6 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.9)]">
+        {/* Progress pips read faster than "1 of 4" and take less space. */}
+        <div className="flex items-center gap-1.5" aria-label={`Step ${step + 1} of ${STEPS.length}`}>
+          {STEPS.map((_, i) => (
+            <span
+              key={i}
+              aria-hidden
+              className={`h-0.5 flex-1 rounded-full transition-colors duration-300 ${
+                i <= step ? "bg-primary" : "bg-border-strong"
+              }`}
+            />
+          ))}
+        </div>
 
-        <div className="mt-5 flex items-center justify-between">
-          <button onClick={dismiss} className="text-xs text-slate-500 hover:text-slate-300">
+        <h2
+          id="walkthrough-title"
+          className="mt-5 text-base font-semibold tracking-tight text-foreground"
+        >
+          {current.title}
+        </h2>
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{current.body}</p>
+
+        <div className="mt-6 flex items-center justify-between">
+          <Button onClick={dismiss} variant="ghost" size="sm">
             Skip
-          </button>
-          <button
-            onClick={() => (isLast ? dismiss() : setStep((s) => s + 1))}
-            className="rounded-md bg-slate-100 px-4 py-1.5 text-sm font-medium text-slate-900 transition hover:bg-white"
-          >
+          </Button>
+          <Button onClick={() => (isLast ? dismiss() : setStep((s) => s + 1))}>
             {isLast ? "Got it" : "Next"}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

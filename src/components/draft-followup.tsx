@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardEyebrow } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type DraftResult = {
   canDraft: boolean;
@@ -9,7 +12,27 @@ type DraftResult = {
   draft: string;
 };
 
-export function DraftFollowUp({ clientId, recipientEmail }: { clientId: string; recipientEmail: string | null }) {
+/** Shaped like the subject + body it replaces, so nothing jumps on arrival. */
+export function DraftSkeleton() {
+  return (
+    <div className="animate-fade-in flex flex-col gap-2" role="status" aria-live="polite">
+      <Skeleton className="h-2.5 w-2/5" />
+      <Skeleton className="h-9 w-full rounded-lg" />
+      <Skeleton className="h-[8.5rem] w-full rounded-lg" />
+      <p className="animate-pulse-soft text-xs text-subtle-foreground">
+        Reading the conversation and drafting a reply…
+      </p>
+    </div>
+  );
+}
+
+export function DraftFollowUp({
+  clientId,
+  recipientEmail,
+}: {
+  clientId: string;
+  recipientEmail: string | null;
+}) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<DraftResult | null>(null);
@@ -49,69 +72,63 @@ export function DraftFollowUp({ clientId, recipientEmail }: { clientId: string; 
   }
 
   const mailtoHref = recipientEmail
-    ? `mailto:${encodeURIComponent(recipientEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+    ? `mailto:${encodeURIComponent(recipientEmail)}?subject=${encodeURIComponent(
+        subject
+      )}&body=${encodeURIComponent(body)}`
     : undefined;
 
   return (
-    <section className="animate-fade-in-up rounded-lg border border-slate-800 bg-slate-900/60 p-5">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xs font-medium uppercase tracking-wide text-slate-500">
-          Draft follow-up
-        </h2>
-        <button
-          onClick={handleDraft}
-          disabled={loading}
-          className="rounded-md border border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:bg-slate-800 disabled:opacity-60"
-        >
+    <Card className="animate-fade-in-up">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 max-w-prose">
+          <CardEyebrow>Draft follow-up</CardEyebrow>
+          <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+            AI-generated from this conversation&apos;s history and open questions. Nothing is ever
+            sent automatically — review and edit before use.
+          </p>
+        </div>
+        <Button onClick={handleDraft} disabled={loading} variant={result ? "outline" : "default"}>
           {loading ? "Drafting…" : result ? "Regenerate" : "Draft follow-up"}
-        </button>
+        </Button>
       </div>
-      <p className="mt-1 text-xs text-slate-600">
-        AI-generated from this conversation&apos;s history and open questions. Nothing is ever
-        sent automatically — review and edit before use.
-      </p>
 
-      {error && <p className="mt-3 text-xs text-red-400">{error}</p>}
+      {loading && <DraftSkeleton />}
 
-      {result && !result.canDraft && (
-        <p className="mt-3 text-sm text-slate-400">
+      {error && <p className="text-xs text-urgent">{error}</p>}
+
+      {!loading && result && !result.canDraft && (
+        <p className="animate-fade-in rounded-lg border border-border bg-background/60 p-3.5 text-sm leading-relaxed text-muted-foreground">
           Not enough specific context to draft something meaningful: {result.reason}
         </p>
       )}
 
-      {result && result.canDraft && (
-        <div className="mt-3 flex flex-col gap-2">
-          <p className="text-xs text-slate-600">{result.reason}</p>
+      {!loading && result && result.canDraft && (
+        <div className="animate-fade-in flex flex-col gap-3">
+          <p className="text-xs leading-relaxed text-subtle-foreground">{result.reason}</p>
           <input
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
-            className="rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 focus:border-slate-500 focus:outline-none"
+            aria-label="Subject"
+            className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground transition-colors placeholder:text-subtle-foreground/70 hover:border-border-strong focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/30"
             placeholder="Subject"
           />
           <textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
+            aria-label="Draft body"
             rows={8}
-            className="rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 focus:border-slate-500 focus:outline-none"
+            className="resize-y rounded-lg border border-border bg-background px-3 py-2.5 text-sm leading-relaxed text-foreground transition-colors hover:border-border-strong focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/30"
           />
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleCopy}
-              className="rounded-md bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-900 transition hover:bg-white"
-            >
-              {copied ? "Copied" : "Copy"}
-            </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button onClick={handleCopy}>{copied ? "Copied" : "Copy"}</Button>
             {mailtoHref && (
-              <a
-                href={mailtoHref}
-                className="rounded-md border border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:bg-slate-800"
-              >
-                Open in email
-              </a>
+              <Button asChild variant="outline">
+                <a href={mailtoHref}>Open in email</a>
+              </Button>
             )}
           </div>
         </div>
       )}
-    </section>
+    </Card>
   );
 }

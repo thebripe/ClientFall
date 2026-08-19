@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ContractValueInput } from "@/components/contract-value-input";
+import { Badge } from "@/components/ui/badge";
 import { RISK_META, formatMoney, relativeDays, type RiskTier } from "@/lib/ui/risk";
 import { firstIntelligence, type ClientIntelligenceExtraction, type ScoreRow } from "@/lib/types";
 
@@ -38,52 +39,70 @@ export function ClientCard({
 
   return (
     <div
-      className={`group relative animate-fade-in-up cursor-pointer rounded-xl border border-slate-800 bg-slate-900/60 p-4 transition duration-200 hover:-translate-y-0.5 hover:bg-slate-900 hover:shadow-lg hover:shadow-black/30 ${meta.border}`}
+      className={`group animate-fade-in-up relative rounded-xl border border-border bg-card p-4 shadow-[0_1px_2px_rgba(0,0,0,0.4)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-raised hover:shadow-[0_1px_2px_rgba(0,0,0,0.4),0_16px_32px_-16px_rgba(0,0,0,0.8)] sm:p-5 ${meta.ring}`}
       style={{ animationDelay: `${delayMs}ms` }}
     >
-      <Link href={`/dashboard/clients/${client.id}`} className="absolute inset-0" aria-label={`View ${client.name}`} />
+      {/* Urgency spine — a thin colored edge reads faster than a badge alone. */}
+      <span
+        aria-hidden
+        className={`absolute inset-y-4 left-0 w-0.5 rounded-full opacity-70 transition-opacity duration-300 group-hover:opacity-100 ${meta.dot}`}
+      />
 
-      <div className="pointer-events-none flex flex-col gap-1.5">
-        <div className="flex items-center justify-between gap-2">
-          <span
-            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${meta.badgeBg} ${meta.text}`}
-          >
-            {meta.emoji} {meta.label}
-          </span>
-          <span className="text-xs text-slate-500">{relativeDays(lastContactAt)}</span>
+      <Link
+        href={`/dashboard/clients/${client.id}`}
+        className="absolute inset-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+        aria-label={`View ${client.name}`}
+      />
+
+      <div className="pointer-events-none flex flex-col gap-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="truncate text-[0.9375rem] font-medium leading-snug text-foreground">
+              {client.name}
+            </p>
+            <p className="truncate text-xs text-subtle-foreground">{client.email_domain}</p>
+          </div>
+          <div className="flex shrink-0 flex-col items-end gap-1.5">
+            <Badge variant={meta.badge}>{meta.label}</Badge>
+            <span className="text-[0.6875rem] text-subtle-foreground">
+              {relativeDays(lastContactAt)}
+            </span>
+          </div>
         </div>
 
-        <div>
-          <p className="font-medium text-slate-100">{client.name}</p>
-          <p className="text-xs text-slate-600">{client.email_domain}</p>
-        </div>
+        {topReason && (
+          <p className="text-sm leading-relaxed text-muted-foreground">{topReason}</p>
+        )}
 
-        <p className="text-sm text-slate-400">{topReason}</p>
         {suggestedAction && (
           <p className={`text-xs font-medium ${meta.text}`}>→ {suggestedAction}</p>
         )}
 
         {intelligence?.extraction_json?.relevant === false && (
-          <p className="text-xs text-amber-400">
-            ⚠ AI flagged this as possibly not a real client relationship
+          <p className="text-xs text-attention">
+            Flagged as possibly not a real client relationship
           </p>
         )}
+
         {signals.length > 0 && (
-          <ul className="mt-0.5 flex flex-col gap-0.5 border-t border-slate-800/60 pt-1.5">
+          <ul className="flex flex-col gap-1.5 border-t border-border pt-3">
             {signals.map((s) => (
-              <li key={s} className="text-xs text-slate-500">
-                ✦ {s}
+              <li key={s} className="flex gap-2 text-xs leading-relaxed text-subtle-foreground">
+                <span aria-hidden className="text-muted-foreground">
+                  ✦
+                </span>
+                <span className="min-w-0">{s}</span>
               </li>
             ))}
           </ul>
         )}
       </div>
 
-      <div className="relative z-10 mt-3 flex items-center justify-between gap-2">
+      <div className="relative z-10 mt-4 flex flex-wrap items-center justify-between gap-2">
+        {/* Tier-matched, not always red — a check-in-tier client showing an
+            urgent-red badge next to an amber one reads as mixed signal. */}
         {row.dollar_at_risk ? (
-          <span className="rounded bg-red-400/10 px-1.5 py-0.5 text-xs text-red-300">
-            {formatMoney(row.dollar_at_risk)} at risk
-          </span>
+          <Badge variant={meta.badge}>{formatMoney(row.dollar_at_risk)} at risk</Badge>
         ) : (
           <span />
         )}

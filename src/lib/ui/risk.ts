@@ -6,33 +6,53 @@ export function riskTier(score: number): RiskTier {
   return "healthy";
 }
 
+/**
+ * The urgency scale is the only place chroma appears in the UI — every
+ * other surface is warm-neutral ink. That's deliberate: if color only
+ * ever means "how much attention does this need", a glance at the page
+ * reads as signal rather than decoration.
+ *
+ * `badge` maps onto the Badge component's variants; `dot`/`text`/`accent`
+ * are for the places a full badge would be too heavy.
+ */
 export const RISK_META: Record<
   RiskTier,
-  { label: string; emoji: string; dot: string; text: string; badgeBg: string; border: string }
+  {
+    label: string;
+    badge: "urgent" | "attention" | "healthy";
+    dot: string;
+    text: string;
+    surface: string;
+    border: string;
+    ring: string;
+  }
 > = {
   urgent: {
     label: "High risk",
-    emoji: "🔴",
-    dot: "bg-red-400",
-    text: "text-red-300",
-    badgeBg: "bg-red-400/10",
-    border: "hover:border-red-900/60",
+    badge: "urgent",
+    dot: "bg-urgent",
+    text: "text-urgent",
+    surface: "bg-urgent-surface",
+    border: "border-urgent-border",
+    ring: "hover:border-urgent-border",
   },
   checkin: {
     label: "Needs a check-in",
-    emoji: "🟠",
-    dot: "bg-amber-400",
-    text: "text-amber-300",
-    badgeBg: "bg-amber-400/10",
-    border: "hover:border-amber-900/60",
+    badge: "attention",
+    dot: "bg-attention",
+    text: "text-attention",
+    surface: "bg-attention-surface",
+    border: "border-attention-border",
+    ring: "hover:border-attention-border",
   },
   healthy: {
     label: "Healthy",
-    emoji: "🟢",
-    dot: "bg-emerald-400",
-    text: "text-emerald-300",
-    badgeBg: "bg-emerald-400/10",
-    border: "hover:border-emerald-900/60",
+    badge: "healthy",
+    dot: "bg-healthy",
+    text: "text-healthy",
+    surface: "bg-healthy-surface",
+    border: "border-healthy-border",
+    ring: "hover:border-healthy-border",
   },
 };
 

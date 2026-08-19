@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { MorningBriefing } from "@/components/morning-briefing";
 import { DemoClientCard } from "@/components/demo-client-card";
+import { Card, CardEyebrow } from "@/components/ui/card";
+import { DemoNotice } from "@/components/page-shell";
 import { DEMO_CLIENTS, DEMO_HEALTHY_COUNT } from "@/lib/demo-data";
 import type { ScoreRow } from "@/lib/types";
 import { riskTier } from "@/lib/ui/risk";
@@ -11,23 +13,33 @@ import { riskTier } from "@/lib/ui/risk";
 // timestamp doesn't need to be live.
 const DEMO_LAST_SYNCED_AT = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
 
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <h3 className="mb-3 text-[0.6875rem] font-medium uppercase tracking-[0.08em] text-subtle-foreground">
+      {children}
+    </h3>
+  );
+}
+
 export function DemoDashboardContent() {
   const ranked: ScoreRow[] = DEMO_CLIENTS.map((fixture) => fixture.row);
 
-  const needsAttention = [...ranked].filter((r) => r.health_score >= 30).sort((a, b) => b.health_score - a.health_score);
+  const needsAttention = [...ranked]
+    .filter((r) => r.health_score >= 30)
+    .sort((a, b) => b.health_score - a.health_score);
   const urgentRows = needsAttention.filter((r) => r.health_score >= 60);
   const checkinRows = needsAttention.filter((r) => r.health_score < 60);
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="animate-fade-in-up rounded-lg border border-amber-900/40 bg-amber-400/5 px-4 py-3 text-sm text-amber-200">
+    <div className="flex flex-col gap-6 sm:gap-8">
+      <DemoNotice>
         You&apos;re viewing a live demo with sample data — no Gmail is connected and nothing here
         is real.{" "}
-        <Link href="/" className="underline underline-offset-2">
+        <Link href="/" className="font-medium underline underline-offset-2">
           Connect your own Gmail
         </Link>{" "}
         to see this with your actual inbox.
-      </div>
+      </DemoNotice>
 
       <MorningBriefing
         firstName="Alex"
@@ -41,33 +53,39 @@ export function DemoDashboardContent() {
         onSync={() => {}}
       />
 
-      <div className="rounded-lg border border-slate-800 bg-slate-900/60 px-4 py-3 text-sm">
-        <p className="text-slate-200">1 client ready for deeper analysis</p>
-        <p className="text-xs text-slate-500">
-          In your real account, an <strong>Analyze conversations</strong> button appears here.
-          Open <strong>Kessler Design Co</strong> below to see what &quot;not analyzed yet&quot;
-          looks like before that runs.
+      <div className="rounded-xl border border-border bg-card px-4 py-4">
+        <p className="text-sm font-medium text-foreground">1 client ready for deeper analysis</p>
+        <p className="mt-1 max-w-prose text-xs leading-relaxed text-muted-foreground">
+          In your real account, an <strong className="font-medium text-foreground">Analyze
+          conversations</strong> button appears here. Open{" "}
+          <strong className="font-medium text-foreground">Kessler Design Co</strong> below to see
+          what &quot;not analyzed yet&quot; looks like before that runs.
         </p>
       </div>
 
-      <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-6">
-        <h2 className="mb-1 text-sm font-medium text-slate-300">Who needs attention</h2>
-        <p className="mb-4 text-xs text-slate-600">
-          Newsletters, receipts, and automated mail are filtered out automatically — this is
-          only real back-and-forth correspondence. Scores and reasons below are calculated
-          directly from reply timing and volume, not AI — open a client to have Claude read the
-          actual conversation for objections, buying signals, and open questions.
-        </p>
+      <Card>
+        <div>
+          <CardEyebrow>Who needs attention</CardEyebrow>
+          <p className="mt-2 max-w-prose text-xs leading-relaxed text-muted-foreground">
+            Newsletters, receipts, and automated mail are filtered out automatically — this is only
+            real back-and-forth correspondence. Scores and reasons below are calculated directly
+            from reply timing and volume, not AI — open a client to have Claude read the actual
+            conversation for objections, buying signals, and open questions.
+          </p>
+        </div>
 
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-7">
           {urgentRows.length > 0 && (
             <div>
-              <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
-                Needs attention now ({urgentRows.length})
-              </h3>
+              <SectionLabel>Needs attention now ({urgentRows.length})</SectionLabel>
               <div className="flex flex-col gap-3">
                 {urgentRows.map((row, i) => (
-                  <DemoClientCard key={row.clients!.id} row={row} tier={riskTier(row.health_score)} delayMs={i * 60} />
+                  <DemoClientCard
+                    key={row.clients!.id}
+                    row={row}
+                    tier={riskTier(row.health_score)}
+                    delayMs={i * 70}
+                  />
                 ))}
               </div>
             </div>
@@ -75,28 +93,26 @@ export function DemoDashboardContent() {
 
           {checkinRows.length > 0 && (
             <div>
-              <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
-                Worth a check-in ({checkinRows.length})
-              </h3>
+              <SectionLabel>Worth a check-in ({checkinRows.length})</SectionLabel>
               <div className="flex flex-col gap-3">
                 {checkinRows.map((row, i) => (
                   <DemoClientCard
                     key={row.clients!.id}
                     row={row}
                     tier={riskTier(row.health_score)}
-                    delayMs={(urgentRows.length + i) * 60}
+                    delayMs={(urgentRows.length + i) * 70}
                   />
                 ))}
               </div>
             </div>
           )}
 
-          <p className="border-t border-slate-800 pt-4 text-xs text-slate-600">
+          <p className="border-t border-border pt-5 text-xs text-subtle-foreground">
             {DEMO_HEALTHY_COUNT} other relationships look healthy — recently in touch, nothing to
             act on.
           </p>
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

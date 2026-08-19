@@ -6,7 +6,17 @@ import { ClientCard } from "@/components/client-card";
 import { SyncingOverlay } from "@/components/syncing-overlay";
 import { MorningBriefing } from "@/components/morning-briefing";
 import { Walkthrough } from "@/components/walkthrough";
+import { Button } from "@/components/ui/button";
+import { Card, CardEyebrow } from "@/components/ui/card";
 import type { ScoreRow } from "@/lib/types";
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <h3 className="mb-3 text-[0.6875rem] font-medium uppercase tracking-[0.08em] text-subtle-foreground">
+      {children}
+    </h3>
+  );
+}
 
 export function DashboardContent({
   userEmail,
@@ -91,8 +101,9 @@ export function DashboardContent({
   const checkinRows = needsAttention.filter((r) => r.health_score < 60);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 sm:gap-8">
       <Walkthrough />
+
       <MorningBriefing
         firstName={firstName}
         gmailConnected={gmailConnected}
@@ -106,90 +117,87 @@ export function DashboardContent({
       />
 
       <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between rounded-lg border border-slate-800 bg-slate-900/60 px-4 py-3 text-sm">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3">
+          <div className="flex min-w-0 items-center gap-2">
             <span
-              className={`h-2 w-2 rounded-full ${gmailConnected ? "bg-emerald-400" : "bg-amber-400"}`}
+              aria-hidden
+              className={`size-1.5 shrink-0 rounded-full ${
+                gmailConnected ? "bg-healthy" : "bg-attention"
+              }`}
             />
-            <span className="text-slate-400">{userEmail}</span>
+            <span className="truncate text-xs text-muted-foreground">{userEmail}</span>
           </div>
           {gmailConnected && ranked.length > 0 && (
             <div className="flex items-center gap-3">
               {lastSyncMsg && !syncing && (
-                <span className="text-xs text-emerald-400">{lastSyncMsg}</span>
+                <span className="animate-fade-in text-xs text-healthy">{lastSyncMsg}</span>
               )}
-              <button
-                onClick={handleSync}
-                disabled={syncing}
-                className="rounded-md border border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:bg-slate-800 disabled:opacity-60"
-              >
+              <Button onClick={handleSync} disabled={syncing} variant="outline">
                 {syncing ? "Syncing…" : "Sync Gmail"}
-              </button>
+              </Button>
             </div>
           )}
         </div>
-        {syncError && <p className="px-1 text-xs text-red-400">{syncError}</p>}
+        {syncError && <p className="px-1 text-xs text-urgent">{syncError}</p>}
       </div>
 
       {readyToAnalyzeCount > 0 && (
         <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between rounded-lg border border-slate-800 bg-slate-900/60 px-4 py-3 text-sm">
-            <div>
-              <p className="text-slate-200">
+          <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-card px-4 py-4">
+            <div className="min-w-0 max-w-prose">
+              <p className="text-sm font-medium text-foreground">
                 {readyToAnalyzeCount} client{readyToAnalyzeCount === 1 ? "" : "s"} ready for deeper
                 analysis
               </p>
-              <p className="text-xs text-slate-500">
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
                 Claude reads recent conversations for objections, buying signals, and open
                 questions — you choose when this runs.
               </p>
             </div>
             <div className="flex items-center gap-3">
               {lastAnalyzeMsg && !analyzing && (
-                <span className="text-xs text-emerald-400">{lastAnalyzeMsg}</span>
+                <span className="animate-fade-in text-xs text-healthy">{lastAnalyzeMsg}</span>
               )}
-              <button
-                onClick={handleAnalyze}
-                disabled={analyzing}
-                className="rounded-md bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-900 transition hover:bg-white disabled:opacity-60"
-              >
+              <Button onClick={handleAnalyze} disabled={analyzing}>
                 {analyzing ? "Analyzing…" : "Analyze conversations"}
-              </button>
+              </Button>
             </div>
           </div>
-          {analyzeError && <p className="px-1 text-xs text-red-400">{analyzeError}</p>}
+          {analyzeError && <p className="px-1 text-xs text-urgent">{analyzeError}</p>}
         </div>
       )}
 
-      <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-6">
-        <h2 className="mb-1 text-sm font-medium text-slate-300">Who needs attention</h2>
-        <p className="mb-4 text-xs text-slate-600">
-          Newsletters, receipts, and automated mail are filtered out automatically — this is
-          only real back-and-forth correspondence. Scores and reasons below are calculated
-          directly from reply timing and volume, not AI — open a client to have Claude read the
-          actual conversation for objections, buying signals, and open questions.
-        </p>
+      <Card>
+        <div>
+          <CardEyebrow>Who needs attention</CardEyebrow>
+          <p className="mt-2 max-w-prose text-xs leading-relaxed text-muted-foreground">
+            Newsletters, receipts, and automated mail are filtered out automatically — this is only
+            real back-and-forth correspondence. Scores and reasons below are calculated directly
+            from reply timing and volume, not AI — open a client to have Claude read the actual
+            conversation for objections, buying signals, and open questions.
+          </p>
+        </div>
 
         {syncing ? (
           <SyncingOverlay />
         ) : ranked.length === 0 ? (
-          <p className="text-sm text-slate-500">
+          <p className="text-sm leading-relaxed text-muted-foreground">
             {clientCount > 0
               ? "No attention scores yet — click Sync Gmail to compute them."
               : "No clients yet — click Sync Gmail to pull threads from the last 60 days and find out who needs a reply."}
           </p>
         ) : needsAttention.length === 0 ? (
-          <p className="text-sm text-slate-500">No clients currently require immediate attention.</p>
+          <p className="text-sm text-muted-foreground">
+            No clients currently require immediate attention.
+          </p>
         ) : (
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-7">
             {urgentRows.length > 0 && (
               <div>
-                <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
-                  Needs attention now ({urgentRows.length})
-                </h3>
+                <SectionLabel>Needs attention now ({urgentRows.length})</SectionLabel>
                 <div className="flex flex-col gap-3">
                   {urgentRows.map((row, i) => (
-                    <ClientCard key={row.clients!.id} row={row} tier="urgent" delayMs={i * 60} />
+                    <ClientCard key={row.clients!.id} row={row} tier="urgent" delayMs={i * 70} />
                   ))}
                 </div>
               </div>
@@ -197,16 +205,14 @@ export function DashboardContent({
 
             {checkinRows.length > 0 && (
               <div>
-                <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
-                  Worth a check-in ({checkinRows.length})
-                </h3>
+                <SectionLabel>Worth a check-in ({checkinRows.length})</SectionLabel>
                 <div className="flex flex-col gap-3">
                   {checkinRows.map((row, i) => (
                     <ClientCard
                       key={row.clients!.id}
                       row={row}
                       tier="checkin"
-                      delayMs={(urgentRows.length + i) * 60}
+                      delayMs={(urgentRows.length + i) * 70}
                     />
                   ))}
                 </div>
@@ -214,14 +220,14 @@ export function DashboardContent({
             )}
 
             {healthyCount > 0 && (
-              <p className="border-t border-slate-800 pt-4 text-xs text-slate-600">
+              <p className="border-t border-border pt-5 text-xs text-subtle-foreground">
                 {healthyCount} other relationship{healthyCount === 1 ? "" : "s"} look healthy —
                 recently in touch, nothing to act on.
               </p>
             )}
           </div>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

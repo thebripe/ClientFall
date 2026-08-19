@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardEyebrow } from "@/components/ui/card";
+import { DraftSkeleton } from "@/components/draft-followup";
 import type { DemoDraft } from "@/lib/demo-data";
 
 // Same UI/UX as the real DraftFollowUp, but resolves from a canned
@@ -27,65 +30,61 @@ export function DemoDraftFollowUp({ draft }: { draft: DemoDraft }) {
   }
 
   const mailtoHref = draft.canDraft
-    ? `mailto:${encodeURIComponent(draft.recipientEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+    ? `mailto:${encodeURIComponent(draft.recipientEmail)}?subject=${encodeURIComponent(
+        subject
+      )}&body=${encodeURIComponent(body)}`
     : undefined;
 
   return (
-    <section className="animate-fade-in-up rounded-lg border border-slate-800 bg-slate-900/60 p-5">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xs font-medium uppercase tracking-wide text-slate-500">Draft follow-up</h2>
-        <button
-          onClick={handleDraft}
-          disabled={loading}
-          className="rounded-md border border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:bg-slate-800 disabled:opacity-60"
-        >
+    <Card className="animate-fade-in-up">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 max-w-prose">
+          <CardEyebrow>Draft follow-up</CardEyebrow>
+          <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+            AI-generated from this conversation&apos;s history and open questions. Nothing is ever
+            sent automatically — review and edit before use. (Simulated in this demo — no real API
+            call.)
+          </p>
+        </div>
+        <Button onClick={handleDraft} disabled={loading} variant={revealed ? "outline" : "default"}>
           {loading ? "Drafting…" : revealed ? "Regenerate" : "Draft follow-up"}
-        </button>
+        </Button>
       </div>
-      <p className="mt-1 text-xs text-slate-600">
-        AI-generated from this conversation&apos;s history and open questions. Nothing is ever
-        sent automatically — review and edit before use. (Simulated in this demo — no real API
-        call.)
-      </p>
 
-      {revealed && !draft.canDraft && (
-        <p className="mt-3 text-sm text-slate-400">
+      {loading && <DraftSkeleton />}
+
+      {!loading && revealed && !draft.canDraft && (
+        <p className="animate-fade-in rounded-lg border border-border bg-background/60 p-3.5 text-sm leading-relaxed text-muted-foreground">
           Not enough specific context to draft something meaningful: {draft.reason}
         </p>
       )}
 
-      {revealed && draft.canDraft && (
-        <div className="mt-3 flex flex-col gap-2">
-          <p className="text-xs text-slate-600">{draft.reason}</p>
+      {!loading && revealed && draft.canDraft && (
+        <div className="animate-fade-in flex flex-col gap-3">
+          <p className="text-xs leading-relaxed text-subtle-foreground">{draft.reason}</p>
           <input
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
-            className="rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 focus:border-slate-500 focus:outline-none"
+            aria-label="Subject"
+            className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground transition-colors hover:border-border-strong focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/30"
           />
           <textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
+            aria-label="Draft body"
             rows={8}
-            className="rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 focus:border-slate-500 focus:outline-none"
+            className="resize-y rounded-lg border border-border bg-background px-3 py-2.5 text-sm leading-relaxed text-foreground transition-colors hover:border-border-strong focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/30"
           />
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleCopy}
-              className="rounded-md bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-900 transition hover:bg-white"
-            >
-              {copied ? "Copied" : "Copy"}
-            </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button onClick={handleCopy}>{copied ? "Copied" : "Copy"}</Button>
             {mailtoHref && (
-              <a
-                href={mailtoHref}
-                className="rounded-md border border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:bg-slate-800"
-              >
-                Open in email
-              </a>
+              <Button asChild variant="outline">
+                <a href={mailtoHref}>Open in email</a>
+              </Button>
             )}
           </div>
         </div>
       )}
-    </section>
+    </Card>
   );
 }

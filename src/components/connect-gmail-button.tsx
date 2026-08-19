@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/button";
 
 const GMAIL_READONLY_SCOPES = [
   "https://www.googleapis.com/auth/userinfo.email",
@@ -41,22 +42,18 @@ export function ConnectGmailButton() {
 
   return (
     <div className="flex flex-col items-center gap-3">
-      <button
-        onClick={handleConnect}
-        disabled={loading}
-        className="flex items-center gap-3 rounded-md bg-slate-100 px-5 py-3 text-sm font-medium text-slate-900 transition hover:bg-white disabled:opacity-60"
-      >
+      <Button onClick={handleConnect} disabled={loading} size="lg" className="gap-3 px-6">
         <GoogleIcon />
         {loading ? "Redirecting to Google…" : "Connect Gmail"}
-      </button>
-      {error && <p className="text-xs text-red-400">{error}</p>}
+      </Button>
+      {error && <p className="text-xs text-urgent">{error}</p>}
     </div>
   );
 }
 
 function GoogleIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 48 48" aria-hidden>
+    <svg className="size-4" viewBox="0 0 48 48" aria-hidden>
       <path
         fill="#FFC107"
         d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.6-6 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l6-6C34.6 5.1 29.6 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21 21-9.4 21-21c0-1.4-.1-2.7-.4-3.5z"

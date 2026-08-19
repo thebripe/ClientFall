@@ -30,8 +30,8 @@ export function ContractValueInput({
   }
 
   return (
-    <label className="flex items-center gap-1 text-xs text-slate-500">
-      <span>$</span>
+    <label className="flex items-center gap-1.5 text-xs text-subtle-foreground">
+      <span aria-hidden>$</span>
       <input
         type="number"
         min="0"
@@ -43,8 +43,9 @@ export function ContractValueInput({
           if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
         }}
         placeholder="contract value"
+        aria-label="Contract value"
         disabled={saving}
-        className="w-24 rounded border border-slate-700 bg-slate-900 px-1.5 py-0.5 text-slate-300 focus:border-slate-500 focus:outline-none disabled:opacity-60"
+        className="w-28 rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground tabular-nums transition-colors placeholder:text-subtle-foreground/70 hover:border-border-strong focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/30 disabled:opacity-60"
       />
     </label>
   );
