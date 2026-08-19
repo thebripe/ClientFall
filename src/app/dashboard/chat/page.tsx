@@ -15,7 +15,7 @@ export default async function ChatPage() {
     <main className="flex min-h-screen w-full flex-col bg-background px-4 py-8 sm:px-6 sm:py-12">
       <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-5 overflow-hidden">
         <PageHeader title="Ask Radar" backHref="/dashboard" backLabel="Dashboard" />
-        <ChatPanel />
+        <ChatPanel mode="live" clientHrefBase="/dashboard/clients" />
       </div>
     </main>
   );

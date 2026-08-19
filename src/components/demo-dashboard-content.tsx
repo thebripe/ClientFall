@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import { MorningBriefing } from "@/components/morning-briefing";
-import { DemoClientCard } from "@/components/demo-client-card";
-import { Card, CardEyebrow } from "@/components/ui/card";
+import { ClientCard } from "@/components/client-card";
 import { DemoNotice } from "@/components/page-shell";
 import { DEMO_CLIENTS, DEMO_HEALTHY_COUNT } from "@/lib/demo-data";
 import type { ScoreRow } from "@/lib/types";
@@ -31,7 +30,7 @@ export function DemoDashboardContent() {
   const checkinRows = needsAttention.filter((r) => r.health_score < 60);
 
   return (
-    <div className="flex flex-col gap-6 sm:gap-8">
+    <div className="flex flex-col gap-8 sm:gap-10">
       <DemoNotice>
         You&apos;re viewing a live demo with sample data — no Gmail is connected and nothing here
         is real.{" "}
@@ -43,6 +42,7 @@ export function DemoDashboardContent() {
 
       <MorningBriefing
         firstName="Alex"
+        userEmail="alex@studio.example"
         gmailConnected
         clientCount={DEMO_CLIENTS.length}
         ranked={ranked}
@@ -51,39 +51,41 @@ export function DemoDashboardContent() {
         reviewedThreadCount={DEMO_CLIENTS.length + 2}
         syncing={false}
         onSync={() => {}}
+        readOnly
       />
 
-      <div className="rounded-xl border border-border bg-card px-4 py-4">
+      <div className="rounded-xl border border-border bg-card px-5 py-4">
         <p className="text-sm font-medium text-foreground">1 client ready for deeper analysis</p>
         <p className="mt-1 max-w-prose text-xs leading-relaxed text-muted-foreground">
-          In your real account, an <strong className="font-medium text-foreground">Analyze
-          conversations</strong> button appears here. Open{" "}
+          In your real account, an{" "}
+          <strong className="font-medium text-foreground">Analyze conversations</strong> button
+          appears here. Open{" "}
           <strong className="font-medium text-foreground">Kessler Design Co</strong> below to see
           what &quot;not analyzed yet&quot; looks like before that runs.
         </p>
       </div>
 
-      <Card>
+      <section className="flex flex-col gap-5">
         <div>
-          <CardEyebrow>Who needs attention</CardEyebrow>
-          <p className="mt-2 max-w-prose text-xs leading-relaxed text-muted-foreground">
-            Newsletters, receipts, and automated mail are filtered out automatically — this is only
-            real back-and-forth correspondence. Scores and reasons below are calculated directly
-            from reply timing and volume, not AI — open a client to have Claude read the actual
-            conversation for objections, buying signals, and open questions.
+          <h2 className="text-sm font-medium text-foreground">Who needs attention</h2>
+          <p className="mt-1.5 max-w-prose text-xs leading-relaxed text-muted-foreground">
+            Only real back-and-forth correspondence — newsletters, receipts, and automated mail are
+            filtered out. Scores are calculated from reply timing and volume, not AI; open a client
+            for Claude&apos;s read of the actual conversation.
           </p>
         </div>
 
-        <div className="flex flex-col gap-7">
+        <div className="flex flex-col gap-8">
           {urgentRows.length > 0 && (
             <div>
               <SectionLabel>Needs attention now ({urgentRows.length})</SectionLabel>
               <div className="flex flex-col gap-3">
                 {urgentRows.map((row, i) => (
-                  <DemoClientCard
+                  <ClientCard
                     key={row.clients!.id}
                     row={row}
                     tier={riskTier(row.health_score)}
+                    href={`/demo/clients/${row.clients!.id}`}
                     delayMs={i * 70}
                   />
                 ))}
@@ -96,10 +98,11 @@ export function DemoDashboardContent() {
               <SectionLabel>Worth a check-in ({checkinRows.length})</SectionLabel>
               <div className="flex flex-col gap-3">
                 {checkinRows.map((row, i) => (
-                  <DemoClientCard
+                  <ClientCard
                     key={row.clients!.id}
                     row={row}
                     tier={riskTier(row.health_score)}
+                    href={`/demo/clients/${row.clients!.id}`}
                     delayMs={(urgentRows.length + i) * 70}
                   />
                 ))}
@@ -112,7 +115,7 @@ export function DemoDashboardContent() {
             act on.
           </p>
         </div>
-      </Card>
+      </section>
     </div>
   );
 }

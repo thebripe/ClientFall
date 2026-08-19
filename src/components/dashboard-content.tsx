@@ -7,7 +7,6 @@ import { SyncingOverlay } from "@/components/syncing-overlay";
 import { MorningBriefing } from "@/components/morning-briefing";
 import { Walkthrough } from "@/components/walkthrough";
 import { Button } from "@/components/ui/button";
-import { Card, CardEyebrow } from "@/components/ui/card";
 import type { ScoreRow } from "@/lib/types";
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -101,11 +100,12 @@ export function DashboardContent({
   const checkinRows = needsAttention.filter((r) => r.health_score < 60);
 
   return (
-    <div className="flex flex-col gap-6 sm:gap-8">
+    <div className="flex flex-col gap-8 sm:gap-10">
       <Walkthrough />
 
       <MorningBriefing
         firstName={firstName}
+        userEmail={userEmail}
         gmailConnected={gmailConnected}
         clientCount={clientCount}
         ranked={ranked}
@@ -114,36 +114,13 @@ export function DashboardContent({
         reviewedThreadCount={reviewedThreadCount}
         syncing={syncing}
         onSync={handleSync}
+        syncMessage={lastSyncMsg}
+        syncError={syncError}
       />
-
-      <div className="flex flex-col gap-2">
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3">
-          <div className="flex min-w-0 items-center gap-2">
-            <span
-              aria-hidden
-              className={`size-1.5 shrink-0 rounded-full ${
-                gmailConnected ? "bg-healthy" : "bg-attention"
-              }`}
-            />
-            <span className="truncate text-xs text-muted-foreground">{userEmail}</span>
-          </div>
-          {gmailConnected && ranked.length > 0 && (
-            <div className="flex items-center gap-3">
-              {lastSyncMsg && !syncing && (
-                <span className="animate-fade-in text-xs text-healthy">{lastSyncMsg}</span>
-              )}
-              <Button onClick={handleSync} disabled={syncing} variant="outline">
-                {syncing ? "Syncing…" : "Sync Gmail"}
-              </Button>
-            </div>
-          )}
-        </div>
-        {syncError && <p className="px-1 text-xs text-urgent">{syncError}</p>}
-      </div>
 
       {readyToAnalyzeCount > 0 && (
         <div className="flex flex-col gap-2">
-          <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-card px-4 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-card px-5 py-4">
             <div className="min-w-0 max-w-prose">
               <p className="text-sm font-medium text-foreground">
                 {readyToAnalyzeCount} client{readyToAnalyzeCount === 1 ? "" : "s"} ready for deeper
@@ -167,37 +144,46 @@ export function DashboardContent({
         </div>
       )}
 
-      <Card>
+      {/* No outer card here on purpose — wrapping cards inside another card
+          made the page read as boxes-in-boxes. The heading anchors the
+          section and the rows sit directly on the page. */}
+      <section className="flex flex-col gap-5">
         <div>
-          <CardEyebrow>Who needs attention</CardEyebrow>
-          <p className="mt-2 max-w-prose text-xs leading-relaxed text-muted-foreground">
-            Newsletters, receipts, and automated mail are filtered out automatically — this is only
-            real back-and-forth correspondence. Scores and reasons below are calculated directly
-            from reply timing and volume, not AI — open a client to have Claude read the actual
-            conversation for objections, buying signals, and open questions.
+          <h2 className="text-sm font-medium text-foreground">Who needs attention</h2>
+          <p className="mt-1.5 max-w-prose text-xs leading-relaxed text-muted-foreground">
+            Only real back-and-forth correspondence — newsletters, receipts, and automated mail are
+            filtered out. Scores are calculated from reply timing and volume, not AI; open a client
+            for Claude&apos;s read of the actual conversation.
           </p>
         </div>
 
         {syncing ? (
           <SyncingOverlay />
         ) : ranked.length === 0 ? (
-          <p className="text-sm leading-relaxed text-muted-foreground">
+          <p className="rounded-xl border border-dashed border-border p-6 text-sm leading-relaxed text-muted-foreground">
             {clientCount > 0
               ? "No attention scores yet — click Sync Gmail to compute them."
               : "No clients yet — click Sync Gmail to pull threads from the last 60 days and find out who needs a reply."}
           </p>
         ) : needsAttention.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
+          <p className="rounded-xl border border-dashed border-border p-6 text-sm text-muted-foreground">
             No clients currently require immediate attention.
           </p>
         ) : (
-          <div className="flex flex-col gap-7">
+          <div className="flex flex-col gap-8">
             {urgentRows.length > 0 && (
               <div>
                 <SectionLabel>Needs attention now ({urgentRows.length})</SectionLabel>
                 <div className="flex flex-col gap-3">
                   {urgentRows.map((row, i) => (
-                    <ClientCard key={row.clients!.id} row={row} tier="urgent" delayMs={i * 70} />
+                    <ClientCard
+                      key={row.clients!.id}
+                      row={row}
+                      tier="urgent"
+                      href={`/dashboard/clients/${row.clients!.id}`}
+                      editableContractValue
+                      delayMs={i * 70}
+                    />
                   ))}
                 </div>
               </div>
@@ -212,6 +198,8 @@ export function DashboardContent({
                       key={row.clients!.id}
                       row={row}
                       tier="checkin"
+                      href={`/dashboard/clients/${row.clients!.id}`}
+                      editableContractValue
                       delayMs={(urgentRows.length + i) * 70}
                     />
                   ))}
@@ -227,7 +215,7 @@ export function DashboardContent({
             )}
           </div>
         )}
-      </Card>
+      </section>
     </div>
   );
 }

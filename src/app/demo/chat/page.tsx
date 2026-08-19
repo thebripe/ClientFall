@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { DemoChatPanel } from "@/components/demo-chat-panel";
+import { DemoChat } from "@/components/demo-chat";
 import { PageHeader } from "@/components/page-shell";
 import { Button } from "@/components/ui/button";
 
@@ -12,7 +12,7 @@ export default function DemoChatPage() {
             <Link href="/">Connect Gmail</Link>
           </Button>
         </PageHeader>
-        <DemoChatPanel />
+        <DemoChat />
       </div>
     </main>
   );

@@ -5,15 +5,25 @@ import { Button } from "@/components/ui/button";
 import { Card, CardEyebrow } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
-type DraftResult = {
+export type DraftResult = {
   canDraft: boolean;
   reason: string;
   subject: string;
   draft: string;
+  recipientEmail?: string | null;
 };
 
+/**
+ * Live mode calls the real API; demo mode resolves a canned fixture after
+ * a short delay so the public /demo shows the same flow without an open,
+ * unauthenticated API surface. One component so the two can't drift.
+ */
+type Props =
+  | { mode: "live"; clientId: string; recipientEmail: string | null }
+  | { mode: "demo"; draft: DraftResult };
+
 /** Shaped like the subject + body it replaces, so nothing jumps on arrival. */
-export function DraftSkeleton() {
+function DraftSkeleton() {
   return (
     <div className="animate-fade-in flex flex-col gap-2" role="status" aria-live="polite">
       <Skeleton className="h-2.5 w-2/5" />
@@ -26,13 +36,7 @@ export function DraftSkeleton() {
   );
 }
 
-export function DraftFollowUp({
-  clientId,
-  recipientEmail,
-}: {
-  clientId: string;
-  recipientEmail: string | null;
-}) {
+export function DraftFollowUp(props: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<DraftResult | null>(null);
@@ -46,10 +50,20 @@ export function DraftFollowUp({
     setResult(null);
     setCopied(false);
 
+    if (props.mode === "demo") {
+      setTimeout(() => {
+        setResult(props.draft);
+        setSubject(props.draft.subject);
+        setBody(props.draft.draft);
+        setLoading(false);
+      }, 1100);
+      return;
+    }
+
     const res = await fetch("/api/intelligence/draft", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ clientId }),
+      body: JSON.stringify({ clientId: props.clientId }),
     });
     const data = await res.json();
 
@@ -71,6 +85,8 @@ export function DraftFollowUp({
     setTimeout(() => setCopied(false), 2000);
   }
 
+  const recipientEmail =
+    props.mode === "live" ? props.recipientEmail : (result?.recipientEmail ?? null);
   const mailtoHref = recipientEmail
     ? `mailto:${encodeURIComponent(recipientEmail)}?subject=${encodeURIComponent(
         subject
@@ -85,6 +101,7 @@ export function DraftFollowUp({
           <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
             AI-generated from this conversation&apos;s history and open questions. Nothing is ever
             sent automatically — review and edit before use.
+            {props.mode === "demo" && " (Simulated in this demo — no real API call.)"}
           </p>
         </div>
         <Button onClick={handleDraft} disabled={loading} variant={result ? "outline" : "default"}>
@@ -109,8 +126,8 @@ export function DraftFollowUp({
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
             aria-label="Subject"
-            className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground transition-colors placeholder:text-subtle-foreground/70 hover:border-border-strong focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/30"
             placeholder="Subject"
+            className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground transition-colors placeholder:text-subtle-foreground/70 hover:border-border-strong focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/30"
           />
           <textarea
             value={body}
