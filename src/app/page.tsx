@@ -17,7 +17,7 @@ export default async function LoginPage() {
     <main className="flex min-h-screen flex-col items-center justify-center bg-background px-5 py-12 text-center">
       <div className="animate-fade-in-up flex w-full max-w-sm flex-col items-center gap-8">
         <div className="flex flex-col items-center gap-3">
-          <h1 className="text-3xl font-semibold tracking-tight text-foreground">Radar</h1>
+          <h1 className="text-3xl font-semibold tracking-tight text-foreground">Clientfall</h1>
           <p className="text-balance text-sm leading-relaxed text-muted-foreground">
             See which client relationships are cooling off before they disappear — straight from
             your Gmail, read-only.
@@ -36,7 +36,7 @@ export default async function LoginPage() {
 
         <div className="flex flex-col items-center gap-3 border-t border-border pt-6">
           <p className="text-balance text-xs leading-relaxed text-subtle-foreground">
-            Radar only ever reads your Gmail. It never sends, drafts, or modifies anything.
+            Clientfall only ever reads your Gmail. It never sends, drafts, or modifies anything.
           </p>
           <Link
             href="/privacy"

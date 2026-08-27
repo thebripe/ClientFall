@@ -20,7 +20,7 @@ const STEPS = [
   },
   {
     title: "Nothing happens without you",
-    body: "Gmail access is read-only — Radar can't send, draft, or modify anything on its own. Follow-up drafts are yours to review, edit, and send yourself.",
+    body: "Gmail access is read-only — Clientfall can't send, draft, or modify anything on its own. Follow-up drafts are yours to review, edit, and send yourself.",
   },
 ];
 

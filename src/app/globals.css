@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /* ---------------------------------------------------------------------
-   Radar design tokens.
+   Clientfall design tokens.
 
    The app is dark-only by design (every screen is an "ink" surface), so
    the palette is defined once on :root rather than behind a dark-mode

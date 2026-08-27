@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button";
 export default function DemoPage() {
   return (
     <PageShell>
-      <PageHeader title="Radar" tag="Demo">
+      <PageHeader title="Clientfall" tag="Demo">
         <Button asChild variant="ghost">
-          <Link href="/demo/chat">Ask Radar</Link>
+          <Link href="/demo/chat">Ask Clientfall</Link>
         </Button>
         <Button asChild variant="outline">
           <Link href="/">Connect Gmail</Link>

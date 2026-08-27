@@ -121,7 +121,7 @@ export function AIMemoryCard({
   return (
     <Card className="animate-fade-in-up">
       <div>
-        <CardEyebrow>What Radar remembers</CardEyebrow>
+        <CardEyebrow>What Clientfall remembers</CardEyebrow>
         {!empty && (
           <p className="mt-1.5 text-xs leading-relaxed text-subtle-foreground">
             Builds up automatically each time this client is analyzed

@@ -84,10 +84,10 @@ export default async function DashboardPage() {
 
   return (
     <PageShell>
-      <PageHeader title="Radar">
+      <PageHeader title="Clientfall">
         {clientCount && clientCount > 0 ? (
           <Button asChild variant="outline">
-            <Link href="/dashboard/chat">Ask Radar</Link>
+            <Link href="/dashboard/chat">Ask Clientfall</Link>
           </Button>
         ) : null}
         {gmailConnected && <DisconnectGmailButton />}

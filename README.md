@@ -1,6 +1,6 @@
-# Radar
+# Clientfall
 
-Radar connects to a user's Gmail (read-only) and surfaces which client
+Clientfall connects to a user's Gmail (read-only) and surfaces which client
 relationships are at risk of falling apart.
 
 Next.js (App Router) + TypeScript + Tailwind, Supabase for auth + Postgres.
@@ -10,7 +10,7 @@ tiered client cards, a per-client detail page with a relationship
 timeline), Claude-powered conversation intelligence (objections, buying
 signals, open questions, commitments — read on demand, not automatic), a
 persistent AI Memory per client, AI-drafted follow-up emails (draft-only,
-nothing is ever sent for you), and an "Ask Radar" chat for plain-English
+nothing is ever sent for you), and an "Ask Clientfall" chat for plain-English
 questions across all your clients are all working end to end. Not built
 yet: the animated pulse-line visualization, the weekly digest cron, and
 anything requiring historical outcome data (revenue prediction, close
@@ -20,7 +20,7 @@ why those are deliberately deferred.
 ## 1. Create a Google Cloud project + OAuth client
 
 1. Go to https://console.cloud.google.com/ and create a new project (or
-   pick an existing one). Name it whatever you like, e.g. "Radar".
+   pick an existing one). Name it whatever you like, e.g. "Clientfall".
 2. **Enable the Gmail API**: in the left sidebar, go to
    *APIs & Services -> Library*, search for "Gmail API", and click
    **Enable**.
@@ -28,7 +28,7 @@ why those are deliberately deferred.
    consent screen*.
    - User type: **External** (unless you have a Google Workspace org and
      want to restrict to it).
-   - Fill in app name ("Radar"), your email as support/developer contact.
+   - Fill in app name ("Clientfall"), your email as support/developer contact.
    - **Scopes**: click *Add or remove scopes* and add
      `https://www.googleapis.com/auth/gmail.readonly`. This is a Google
      "restricted" (sensitive) scope.
@@ -45,7 +45,7 @@ why those are deliberately deferred.
 4. **Create OAuth client credentials**: *APIs & Services -> Credentials ->
    Create Credentials -> OAuth client ID*.
    - Application type: **Web application**.
-   - Name: "Radar (Supabase)".
+   - Name: "Clientfall (Supabase)".
    - **Authorized redirect URIs**: add your Supabase project's OAuth
      callback URL — you'll get this in step 2 below, it looks like
      `https://<your-project-ref>.supabase.co/auth/v1/callback`. Add it
@@ -75,7 +75,7 @@ why those are deliberately deferred.
 4. **Add your local + prod app URLs**: *Authentication -> URL
    Configuration*.
    - Site URL: `http://localhost:3000` for now (change to your Vercel
-     URL once deployed, e.g. `https://radar.vercel.app`).
+     URL once deployed, e.g. `https://clientfall.vercel.app`).
    - Redirect URLs: add `http://localhost:3000/auth/callback` and, once
      deployed, `https://<your-vercel-domain>/auth/callback`.
 5. **Run the database schema**: *SQL Editor -> New query*, run these in
@@ -218,7 +218,7 @@ specific, it says so instead of generating generic "just checking in"
 filler. The draft lands in an editable subject + body you can tweak,
 then **Copy** or **Open in email** (a `mailto:` link prefilled with your
 edits). There is no send button and no send pipeline in this app —
-Radar never sends email on your behalf.
+Clientfall never sends email on your behalf.
 
 ### AI Memory
 
@@ -234,7 +234,7 @@ call as Conversation Intelligence (same button, same cost, no extra API
 calls), and shown on the client detail page under **AI Memory**, with an
 empty state until a client's first analysis.
 
-### AI Chat ("Ask Radar")
+### AI Chat ("Ask Clientfall")
 
 A chat page (`/dashboard/chat`) for asking plain-English questions about
 your clients — "which client should I prioritize," "who mentioned
@@ -257,7 +257,7 @@ If you land on `/auth/auth-code-error` instead, check:
 
 ## Sharing this publicly
 
-Radar is hardened for public exposure (security headers, per-user rate
+Clientfall is hardened for public exposure (security headers, per-user rate
 limiting on the Gmail/Claude-calling routes, generic error responses, a
 privacy page, and an in-app "Disconnect Gmail" action), but there are two
 genuinely different ways to "make it public," and Google's rules force the

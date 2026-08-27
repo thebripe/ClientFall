@@ -1,4 +1,4 @@
--- Radar core schema.
+-- Clientfall core schema.
 -- Run this in the Supabase SQL Editor (or via `supabase db push` once the
 -- CLI is linked to your project) before testing the Connect Gmail flow.
 

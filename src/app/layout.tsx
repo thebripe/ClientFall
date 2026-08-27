@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Radar",
+  title: "Clientfall",
   description: "Which client relationships are at risk of falling apart.",
 };
 

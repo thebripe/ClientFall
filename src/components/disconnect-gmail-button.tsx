@@ -21,7 +21,7 @@ export function DisconnectGmailButton() {
     return (
       <div className="flex flex-wrap items-center justify-end gap-2 rounded-lg border border-border bg-card px-3 py-2">
         <span className="max-w-[22rem] text-xs leading-relaxed text-muted-foreground">
-          Revoke Gmail access? Radar stops reading your inbox immediately — previously synced
+          Revoke Gmail access? Clientfall stops reading your inbox immediately — previously synced
           client data stays until you delete it.
         </span>
         <div className="flex items-center gap-2">
