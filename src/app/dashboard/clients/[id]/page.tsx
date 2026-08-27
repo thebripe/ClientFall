@@ -152,12 +152,13 @@ export default async function ClientDetailPage({
             </p>
             <p className="mt-1 text-xs text-subtle-foreground">attention score</p>
           </div>
-          {score?.dollar_at_risk ? (
+          {/* The real value entered below, not a derived fraction of it. */}
+          {typeof client.contract_value === "number" && client.contract_value > 0 ? (
             <div>
               <p className={`text-3xl font-semibold tabular-nums tracking-tight ${meta.text}`}>
-                {formatMoney(score.dollar_at_risk)}
+                {formatMoney(client.contract_value)}
               </p>
-              <p className="mt-1 text-xs text-subtle-foreground">at risk</p>
+              <p className="mt-1 text-xs text-subtle-foreground">deal value at risk</p>
             </div>
           ) : null}
           {lastContactAt && (
@@ -187,7 +188,10 @@ export default async function ClientDetailPage({
           </div>
         )}
 
-        <div className="mt-6 border-t border-border pt-5">
+        <div className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border pt-5">
+          <span className="text-xs text-subtle-foreground">
+            Deal value — set manually, never guessed:
+          </span>
           <ContractValueInput clientId={client.id} initialValue={client.contract_value} />
         </div>
       </section>

@@ -46,7 +46,13 @@ export function ClientCard({
   const suggestedAction = row.top_reasons_json?.suggestedAction;
   const intelligence = firstIntelligence(client.client_intelligence);
   const signals = intelligence?.extraction_json ? topSignals(intelligence.extraction_json) : [];
-  const hasFooter = Boolean(row.dollar_at_risk) || editableContractValue || Boolean(client.contract_value);
+  const dealValue =
+    typeof client.contract_value === "number" && client.contract_value > 0
+      ? client.contract_value
+      : null;
+  // Only the editable variant needs a footer — read-only cards already show
+  // the value beside the urgency badge, so a footer would just repeat it.
+  const hasFooter = editableContractValue;
 
   return (
     <div
@@ -75,6 +81,13 @@ export function ClientCard({
           </div>
           <div className="flex shrink-0 flex-col items-end gap-1.5">
             <Badge variant={meta.badge}>{meta.label}</Badge>
+            {/* The real entered deal value, sitting with the urgency badge so
+                the two read together. Absent entirely when none is set. */}
+            {dealValue !== null && (
+              <span className={`text-xs font-medium tabular-nums ${meta.text}`}>
+                {formatMoney(dealValue)}
+              </span>
+            )}
             <span className="text-[0.6875rem] text-subtle-foreground">
               {relativeDays(lastContactAt)}
             </span>
@@ -108,21 +121,9 @@ export function ClientCard({
       </div>
 
       {hasFooter && (
-        <div className="relative z-10 mt-4 flex flex-wrap items-center justify-between gap-2">
-          {/* Tier-matched, not always red — a check-in-tier client showing an
-              urgent-red badge next to an amber one reads as mixed signal. */}
-          {row.dollar_at_risk ? (
-            <Badge variant={meta.badge}>{formatMoney(row.dollar_at_risk)} at risk</Badge>
-          ) : (
-            <span />
-          )}
-          {editableContractValue ? (
-            <ContractValueInput clientId={client.id} initialValue={client.contract_value} />
-          ) : client.contract_value ? (
-            <span className="text-xs text-subtle-foreground">
-              {formatMoney(client.contract_value)} contract
-            </span>
-          ) : null}
+        <div className="relative z-10 mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
+          <span className="text-xs text-subtle-foreground">Deal value</span>
+          <ContractValueInput clientId={client.id} initialValue={client.contract_value} />
         </div>
       )}
     </div>

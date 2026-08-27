@@ -5,6 +5,13 @@ import type { ClientIntelligenceExtraction, ClientMemory, ScoreRow } from "@/lib
 // mistakes it for an actual client, and nothing here ever triggers a
 // Gmail, Supabase, or Anthropic call. It exists so people without a
 // connected Gmail account can see every feature working.
+//
+// Deal values are deliberately spread across all four cases so the demo
+// exercises the real rules: two high-priority clients WITH a value (they
+// are the only ones the briefing's aggregate sums), one check-in-tier
+// client with a value (excluded from the aggregate — not high priority),
+// and one client with no value at all (renders normally, just without a
+// dollar figure).
 
 const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString();
 
@@ -130,7 +137,7 @@ export const DEMO_CLIENTS: DemoFixture[] = [
         id: "demo-nomi-studio",
         name: "Nomi Studio",
         email_domain: "nomistudio.example",
-        contract_value: null,
+        contract_value: 8500,
         threads: [{ last_message_at: daysAgo(4) }],
         client_intelligence: {
           analyzed_at: daysAgo(1),

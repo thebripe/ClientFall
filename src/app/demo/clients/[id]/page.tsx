@@ -70,12 +70,12 @@ export default async function DemoClientDetailPage({
             </p>
             <p className="mt-1 text-xs text-subtle-foreground">attention score</p>
           </div>
-          {row.dollar_at_risk ? (
+          {client.contract_value ? (
             <div>
               <p className={`text-3xl font-semibold tabular-nums tracking-tight ${meta.text}`}>
-                {formatMoney(row.dollar_at_risk)}
+                {formatMoney(client.contract_value)}
               </p>
-              <p className="mt-1 text-xs text-subtle-foreground">at risk</p>
+              <p className="mt-1 text-xs text-subtle-foreground">deal value at risk</p>
             </div>
           ) : null}
           <div>
@@ -86,11 +86,11 @@ export default async function DemoClientDetailPage({
           </div>
         </div>
 
-        {client.contract_value ? (
-          <p className="mt-7 border-t border-border pt-5 text-xs text-subtle-foreground">
-            {formatMoney(client.contract_value)} contract value
-          </p>
-        ) : null}
+        <p className="mt-7 border-t border-border pt-5 text-xs text-subtle-foreground">
+          {client.contract_value
+            ? "Deal value is set manually per client — never guessed or AI-extracted."
+            : "No deal value set for this client — everything else still works, just without a dollar figure."}
+        </p>
       </section>
 
       <Card className="animate-fade-in-up relative overflow-hidden">

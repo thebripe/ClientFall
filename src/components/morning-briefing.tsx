@@ -3,9 +3,22 @@
 import { CountUp } from "@/components/count-up";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { formatMoney } from "@/lib/ui/risk";
+import { daysSince, formatMoney } from "@/lib/ui/risk";
 import { relativeTime, timeOfDayGreeting } from "@/lib/ui/time";
 import type { ScoreRow } from "@/lib/types";
+
+const HIGH_PRIORITY_THRESHOLD = 60;
+
+/** Most recent activity across a client's threads, or null if none. */
+function lastContactOf(row: ScoreRow): string | null {
+  return (
+    row.clients?.threads
+      .map((t) => t.last_message_at)
+      .filter((d): d is string => Boolean(d))
+      .sort()
+      .pop() ?? null
+  );
+}
 
 function Stat({
   value,
@@ -65,9 +78,23 @@ export function MorningBriefing({
   readOnly?: boolean;
 }) {
   const needsAttention = ranked.filter((r) => r.health_score >= 30);
-  const highPriority = needsAttention.filter((r) => r.health_score >= 60);
-  const totalAtRisk = needsAttention.reduce((sum, r) => sum + (r.dollar_at_risk ?? 0), 0);
+  const highPriority = needsAttention.filter((r) => r.health_score >= HIGH_PRIORITY_THRESHOLD);
   const top = needsAttention[0];
+
+  // Only high-priority clients that actually have a deal value entered.
+  // Every dollar here is a real number the user typed in — nothing is
+  // estimated, weighted, or inferred, and clients with no value set are
+  // simply absent rather than counted as zero.
+  const valuedHighPriority = highPriority.filter(
+    (r) => typeof r.clients?.contract_value === "number" && r.clients.contract_value > 0
+  );
+  const highPriorityValue = valuedHighPriority.reduce(
+    (sum, r) => sum + (r.clients!.contract_value ?? 0),
+    0
+  );
+
+  const topValue = top?.clients?.contract_value ?? null;
+  const topDaysSinceContact = top ? daysSince(lastContactOf(top)) : null;
 
   const greeting = `${timeOfDayGreeting()}${firstName ? `, ${firstName}` : ""}.`;
 
@@ -150,10 +177,20 @@ export function MorningBriefing({
                 <p className="mt-1 max-w-prose text-sm leading-relaxed text-muted-foreground">
                   {top.top_reasons_json?.reasons?.[0]}
                 </p>
-                {top.dollar_at_risk ? (
+                {/* Deal value only when one is actually set; the day count
+                    says "since last contact" rather than "waiting", since a
+                    thread can be quiet because we were the last to reply. */}
+                {topValue || topDaysSinceContact !== null ? (
                   <p className="mt-3 text-xs text-subtle-foreground">
-                    <span className="text-urgent">{formatMoney(top.dollar_at_risk)}</span> at risk
-                    on this one
+                    {topValue ? (
+                      <span className="font-medium text-foreground">
+                        {formatMoney(topValue)} deal
+                      </span>
+                    ) : null}
+                    {topValue && topDaysSinceContact !== null ? " — " : null}
+                    {topDaysSinceContact !== null
+                      ? `${topDaysSinceContact === 0 ? "last contact today" : `${topDaysSinceContact} day${topDaysSinceContact === 1 ? "" : "s"} since last contact`}`
+                      : null}
                   </p>
                 ) : null}
               </div>
@@ -166,11 +203,15 @@ export function MorningBriefing({
         <div className="mt-7 flex flex-wrap gap-x-12 gap-y-5 border-t border-border pt-6">
           <Stat value={<CountUp value={highPriority.length} />} label="high priority" />
           <Stat value={<CountUp value={needsAttention.length} />} label="recommended actions" />
-          {totalAtRisk > 0 && (
+          {/* Hidden entirely when no high-priority client has a value set —
+              never renders "$0", and never implies a total we can't back up. */}
+          {highPriorityValue > 0 && (
             <Stat
               tone="urgent"
-              value={<CountUp value={totalAtRisk} formatter={formatMoney} />}
-              label="at risk right now"
+              value={<CountUp value={highPriorityValue} formatter={formatMoney} />}
+              label={`at risk across ${valuedHighPriority.length} high-priority ${
+                valuedHighPriority.length === 1 ? "deal" : "deals"
+              }`}
             />
           )}
         </div>

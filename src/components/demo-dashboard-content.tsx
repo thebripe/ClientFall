@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { MorningBriefing } from "@/components/morning-briefing";
 import { ClientCard } from "@/components/client-card";
+import { Walkthrough } from "@/components/walkthrough";
 import { DemoNotice } from "@/components/page-shell";
 import { DEMO_CLIENTS, DEMO_HEALTHY_COUNT } from "@/lib/demo-data";
 import type { ScoreRow } from "@/lib/types";
@@ -31,6 +32,11 @@ export function DemoDashboardContent() {
 
   return (
     <div className="flex flex-col gap-8 sm:gap-10">
+      {/* Same component and same "seen" key as the real app — the demo just
+          gets copy that doesn't tell you to sync an inbox you haven't
+          connected. Runs entirely client-side; no API calls. */}
+      <Walkthrough mode="demo" />
+
       <DemoNotice>
         You&apos;re viewing a live demo with sample data — no Gmail is connected and nothing here
         is real.{" "}
