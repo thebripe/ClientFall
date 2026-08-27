@@ -330,3 +330,4 @@ convention is being replaced by `proxy.ts` in a future Next.js major
 version. It's fully functional today (session refresh works), just
 flagged for a future migration — left as-is for now rather than moving
 to an undocumented convention.
+Testing auto-deploy.
